@@ -12,6 +12,7 @@ import com.jibo.apptoolkit.android.JiboRemoteControl
 import com.jibo.apptoolkit.android.model.api.Robot
 import java.io.InputStream
 import android.widget.Toast
+import com.jibo.apptoolkit.protocol.model.Command
 import kotlinx.android.synthetic.main.activity_main.*
 import java.util.ArrayList
 
@@ -73,6 +74,8 @@ class MainActivity : AppCompatActivity(), OnConnectionListener, CommandLibrary.O
         disconnectButton.setOnClickListener { onDisconnectClick() }
         logoutButton.setOnClickListener { onLogOutClick() }
         interactButton.setOnClickListener { onInteractClick() }
+        listenButton.setOnClickListener { onListenClick() }
+        moveButton.setOnClickListener { onMoveClick() }
 
         // Start with only the Log In button enabled
         loginButton.isEnabled = true
@@ -80,6 +83,8 @@ class MainActivity : AppCompatActivity(), OnConnectionListener, CommandLibrary.O
         disconnectButton.isEnabled = false
         logoutButton.isEnabled = false
         interactButton.isEnabled = false
+        listenButton.isEnabled = false
+        moveButton.isEnabled = false
     }
         // Our connectivity functions
 
@@ -134,19 +139,51 @@ class MainActivity : AppCompatActivity(), OnConnectionListener, CommandLibrary.O
         connectButton?.isEnabled = false
         disconnectButton?.isEnabled = false
         interactButton?.isEnabled = false
+        listenButton?.isEnabled = false
+        moveButton?.isEnabled = false
 
         // Log that we've logged out to the app
         Toast.makeText(this@MainActivity, "Logged Out", Toast.LENGTH_SHORT).show()
     }
 
-    // Say Hello World
+    // Interact Button
     fun onInteractClick() {
         if (mCommandLibrary != null) {
-            var text = "<pitch halftone=\"2\"><duration stretch=\"2.0\">Hi there,</duration> I'm Jibo </pitch>"
-            mCommandLibrary?.say(text, this)
-
-            mCommandLibrary?.listen(10L, 10L, "en", this)
+            //mCommandLibrary?.listen(15L, 3600L, "en", this)
             log("onInteractClick was successfully called")
+            var text = "<style set=\"sheepish\"> Hi, this is sheepish styled speech.</style>" +
+                       "<style set=\"enthusiastic\"> And this is enthusiastic styled speech.</style>" +
+                       "<style set=\"confused\"> And this is me being confused.</style>" +
+                       "<style set=\"confident\"> And here is me being confident.</style>"
+            mCommandLibrary?.say(text, this)
+        }
+    }
+
+    // Listen Button
+    fun onListenClick() {
+        if (mCommandLibrary != null) {
+            mCommandLibrary?.listen(10L, 3600L, "en", this)
+            log("onListenClick was successfully called")
+        }
+    }
+
+    // Move Button
+    fun onMoveClick() {
+        if (mCommandLibrary != null) {
+            //var target = Command.LookAtRequest.PositionTarget(intArrayOf(10, 1, 1))
+            //var target = Command.LookAtRequest.AngleTarget(intArrayOf(3, 1))
+            //mCommandLibrary?.lookAt(target, this)
+            log("onMoveClick successfully called")
+            if (rotateHorizontal.isChecked || rotateVertical.isChecked) {
+                var deltaX = 0
+                var deltaY = 0
+                if (rotateHorizontal.isChecked)
+                    deltaX = 3
+                if (rotateVertical.isChecked)
+                    deltaY = 3
+                var target = Command.LookAtRequest.AngleTarget(intArrayOf(deltaX, deltaY))
+                mCommandLibrary?.lookAt(target, this)
+            }
         }
     }
 
@@ -161,6 +198,8 @@ class MainActivity : AppCompatActivity(), OnConnectionListener, CommandLibrary.O
             // enable the Disconnect and Say buttons
             disconnectButton?.isEnabled = true
             interactButton?.isEnabled = true
+            listenButton?.isEnabled = true
+            moveButton?.isEnabled = true
 
             // Log that we're connected to the app
             Toast.makeText(this@MainActivity, "Connected", Toast.LENGTH_SHORT).show()
@@ -216,7 +255,9 @@ class MainActivity : AppCompatActivity(), OnConnectionListener, CommandLibrary.O
         }
     }
 
-    override fun onEvent(s: String, baseEvent: EventMessage.BaseEvent) {}
+    override fun onEvent(s: String, baseEvent: EventMessage.BaseEvent) {
+        log("String: $s, BaseEvent: $baseEvent")
+    }
 
     override fun onPhoto(s: String, takePhotoEvent: EventMessage.TakePhotoEvent, inputStream: InputStream) {}
 
@@ -227,8 +268,8 @@ class MainActivity : AppCompatActivity(), OnConnectionListener, CommandLibrary.O
         var text = "Here's what I heard: $speech"
         if (text == ""){
             text = "Sorry, did you say something?"
-        } else if (text == "Hey Jibo"){
-            text = "Hi! How can I help you?"
+        } else if (text.contains("jibo")){
+            text = "Hi! Did someone say Jibo? How can I help you?"
         }
         mCommandLibrary?.say(text, this)
     }
