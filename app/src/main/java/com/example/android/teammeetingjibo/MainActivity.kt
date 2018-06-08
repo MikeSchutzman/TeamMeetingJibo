@@ -1,8 +1,10 @@
 package com.example.android.teammeetingjibo
 
+import android.content.Context
 import android.support.v7.app.AppCompatActivity
 import android.os.Bundle
 import android.util.Log
+import android.widget.Switch
 import com.jibo.apptoolkit.protocol.CommandLibrary
 import com.jibo.apptoolkit.protocol.OnConnectionListener
 import com.jibo.apptoolkit.protocol.model.EventMessage
@@ -32,9 +34,9 @@ class MainActivity : AppCompatActivity(), OnConnectionListener, CommandLibrary.O
             // Print a list of all robots associated with the account and their index in the array
             // so we can choose the one we want to connect to
             var i = 0
-            var botList = "";
+            var botList = ""
             while (i < mRobots!!.size) {
-                botList += i.toString() + ": " + mRobots!!.get(i).getRobotName() + "\n"
+                botList += i.toString() + ": " + mRobots!!.get(i).robotName + "\n"
                 i++
             }
 
@@ -81,6 +83,11 @@ class MainActivity : AppCompatActivity(), OnConnectionListener, CommandLibrary.O
     }
         // Our connectivity functions
 
+    // function for logging information
+    private fun log(msg: String) {
+        Log.d("TeamMeeting", msg)
+    }
+
     // Log In
     fun onLoginClick() {
         JiboRemoteControl.instance.signIn(this, onAuthenticationListener)
@@ -97,7 +104,10 @@ class MainActivity : AppCompatActivity(), OnConnectionListener, CommandLibrary.O
         // To connect to a different robot, replace `0` in the code below with the index
         // printed on-screen next to the correct robot name
         else {
-            var myBot = mRobots!![0]
+            var botNum = 0
+            if (connectSwitch.isChecked)
+                botNum = 1
+            var myBot = mRobots!![botNum]
             JiboRemoteControl.instance.connect(myBot, this)
         }
 
@@ -136,7 +146,7 @@ class MainActivity : AppCompatActivity(), OnConnectionListener, CommandLibrary.O
             mCommandLibrary?.say(text, this)
 
             mCommandLibrary?.listen(10L, 10L, "en", this)
-            Log.d("TMJ", "onInteractClick was successfully called")
+            log("onInteractClick was successfully called")
         }
     }
 
@@ -213,10 +223,12 @@ class MainActivity : AppCompatActivity(), OnConnectionListener, CommandLibrary.O
     override fun onVideo(s: String, videoReadyEvent: EventMessage.VideoReadyEvent, inputStream: InputStream) {}
 
     override fun onListen(transactID: String, speech: String) {
-        Log.d("TMJ", "Heard: $speech")
+        log("Heard: $speech")
         var text = "Here's what I heard: $speech"
         if (text == ""){
             text = "Sorry, did you say something?"
+        } else if (text == "Hey Jibo"){
+            text = "Hi! How can I help you?"
         }
         mCommandLibrary?.say(text, this)
     }
