@@ -1,10 +1,8 @@
 package com.example.android.teammeetingjibo
 
-import android.content.Context
 import android.support.v7.app.AppCompatActivity
 import android.os.Bundle
 import android.util.Log
-import android.widget.Switch
 import com.jibo.apptoolkit.protocol.CommandLibrary
 import com.jibo.apptoolkit.protocol.OnConnectionListener
 import com.jibo.apptoolkit.protocol.model.EventMessage
@@ -149,12 +147,23 @@ class MainActivity : AppCompatActivity(), OnConnectionListener, CommandLibrary.O
     // Interact Button
     fun onInteractClick() {
         if (mCommandLibrary != null) {
-            //mCommandLibrary?.listen(15L, 3600L, "en", this)
+            /*
+            var actions = arrayOf("affection", "confused", "embarrassed", "excited",
+                    "frustrated", "happy", "headshake", "laughing", "nod", "proud",
+                    "relieved", "sad", "scared", "worried")*/
+            //var text = "Hello, this message should activate the happy action?"
             log("onInteractClick was successfully called")
-            var text = "<style set=\"sheepish\"> Hi, this is sheepish styled speech.</style>" +
-                       "<style set=\"enthusiastic\"> And this is enthusiastic styled speech.</style>" +
-                       "<style set=\"confused\"> And this is me being confused.</style>" +
-                       "<style set=\"confident\"> And here is me being confident.</style>"
+            /*
+            for (act in actions) {
+                log("current act: $act")
+                var text = "$act <anim cat='$act'/>"
+                mCommandLibrary?.say(text, this)
+                Thread.sleep(4000)
+            }*/
+            var text = "This is a headshake <anim cat='headshake'/>"
+            mCommandLibrary?.say(text, this)
+            Thread.sleep(3000)
+            text = "And this is a nod. <anim cat='nod'/>"
             mCommandLibrary?.say(text, this)
         }
     }
@@ -174,16 +183,23 @@ class MainActivity : AppCompatActivity(), OnConnectionListener, CommandLibrary.O
             //var target = Command.LookAtRequest.AngleTarget(intArrayOf(3, 1))
             //mCommandLibrary?.lookAt(target, this)
             log("onMoveClick successfully called")
-            if (rotateHorizontal.isChecked || rotateVertical.isChecked) {
-                var deltaX = 0
-                var deltaY = 0
-                if (rotateHorizontal.isChecked)
-                    deltaX = 3
-                if (rotateVertical.isChecked)
-                    deltaY = 3
-                var target = Command.LookAtRequest.AngleTarget(intArrayOf(deltaX, deltaY))
-                mCommandLibrary?.lookAt(target, this)
-            }
+            var deltaX = 0
+            var deltaY = 0
+            var deltaZ = 0
+            // 1, 1, 1
+            // 2, -3, 1
+            // -2, 1, 1
+            // -2, -3, 1
+            if (positionTextX.text.toString() != "")
+                deltaX = Integer.parseInt(positionTextX.text.toString())
+            if (positionTextY.text.toString() != "")
+                deltaY = Integer.parseInt(positionTextY.text.toString())
+            if (positionTextZ.text.toString() != "")
+                deltaZ = Integer.parseInt(positionTextZ.text.toString())
+            //var target = Command.LookAtRequest.AngleTarget(intArrayOf(deltaX, deltaY))
+            var target = Command.LookAtRequest.PositionTarget(intArrayOf(deltaX, deltaY, deltaZ))
+            mCommandLibrary?.lookAt(target, this)
+
         }
     }
 
@@ -265,13 +281,23 @@ class MainActivity : AppCompatActivity(), OnConnectionListener, CommandLibrary.O
 
     override fun onListen(transactID: String, speech: String) {
         log("Heard: $speech")
-        var text = "Here's what I heard: $speech"
+        var text = "$speech"
         if (text == ""){
             text = "Sorry, did you say something?"
-        } else if (text.contains("jibo")){
+        } else if (text.toLowerCase().contains("jibo")){
             text = "Hi! Did someone say Jibo? How can I help you?"
+        } else if (text.toLowerCase().contains("happy")){
+            text = "<anim cat='happy'/>"
+        } else if (text.toLowerCase().contains("surprised")){
+            text = "<anim cat='surprised' nonBlocking='true' endNeutral='true' />"
+        } else if (text.toLowerCase().contains("hello")){
+            text = "Hello to you too!"
+        } else if (text.toLowerCase().contains(" hi ")){
+            text = "Hi! How are you?"
         }
         mCommandLibrary?.say(text, this)
+        Thread.sleep(2000)
+        onListenClick()
     }
 
     override fun onParseError() {}

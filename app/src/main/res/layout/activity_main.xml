@@ -48,7 +48,7 @@
         android:id="@+id/disconnectButton"
         android:layout_width="wrap_content"
         android:layout_height="40dp"
-        android:layout_marginBottom="80dp"
+        android:layout_marginBottom="88dp"
         android:layout_marginEnd="8dp"
         android:layout_marginStart="8dp"
         android:text="Disconnect"
@@ -68,7 +68,8 @@
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/disconnectButton" />
+        app:layout_constraintTop_toBottomOf="@+id/disconnectButton"
+        app:layout_constraintVertical_bias="0.0" />
 
     <Switch
         android:id="@+id/connectSwitch"
@@ -114,37 +115,43 @@
         app:layout_constraintTop_toBottomOf="@+id/listenButton"
         app:layout_constraintVertical_bias="0.0" />
 
-    <ToggleButton
-        android:id="@+id/rotateHorizontal"
-        android:layout_width="wrap_content"
+    <EditText
+        android:id="@+id/positionTextX"
+        android:layout_width="78dp"
         android:layout_height="wrap_content"
-        android:layout_marginBottom="8dp"
-        android:layout_marginStart="48dp"
-        android:layout_marginTop="8dp"
-        android:text="Rotate (Horizontal)"
-        android:textOff="Rotate Horizontal"
-        android:textOn="Rotate Horizontal"
-        app:layout_constraintBottom_toTopOf="@+id/disconnectButton"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/moveButton"
-        app:layout_constraintVertical_bias="0.0" />
-
-    <ToggleButton
-        android:id="@+id/rotateVertical"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginBottom="8dp"
-        android:layout_marginEnd="8dp"
-        android:layout_marginStart="8dp"
-        android:layout_marginTop="8dp"
-        android:text="Rotate (Vertical)"
-        android:textOff="Rotate Vertical"
-        android:textOn="Rotate Vertical"
-        app:layout_constraintBottom_toTopOf="@+id/disconnectButton"
+        android:layout_marginTop="20dp"
+        android:ems="10"
+        android:hint="x"
+        android:inputType="numberSigned"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintHorizontal_bias="0.0"
-        app:layout_constraintStart_toEndOf="@+id/rotateHorizontal"
-        app:layout_constraintTop_toBottomOf="@+id/moveButton"
-        app:layout_constraintVertical_bias="0.0" />
+        app:layout_constraintHorizontal_bias="0.101"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/moveButton" />
+
+    <EditText
+        android:id="@+id/positionTextY"
+        android:layout_width="85dp"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="20dp"
+        android:ems="10"
+        android:hint="y"
+        android:inputType="numberSigned"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.501"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/moveButton" />
+
+    <EditText
+        android:id="@+id/positionTextZ"
+        android:layout_width="63dp"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="20dp"
+        android:ems="10"
+        android:hint="z"
+        android:inputType="numberSigned"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.884"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/moveButton" />
 
 </android.support.constraint.ConstraintLayout>
