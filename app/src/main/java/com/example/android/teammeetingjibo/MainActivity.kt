@@ -88,7 +88,7 @@ class MainActivity : AppCompatActivity(), OnConnectionListener, CommandLibrary.O
 
     // function for logging information
     private fun log(msg: String) {
-        Log.d("TeamMeeting", msg)
+        Log.d("TMJ", msg)
     }
 
     // Log In
@@ -147,24 +147,62 @@ class MainActivity : AppCompatActivity(), OnConnectionListener, CommandLibrary.O
     // Interact Button
     fun onInteractClick() {
         if (mCommandLibrary != null) {
-            /*
-            var actions = arrayOf("affection", "confused", "embarrassed", "excited",
-                    "frustrated", "happy", "headshake", "laughing", "nod", "proud",
-                    "relieved", "sad", "scared", "worried")*/
+            var actions = arrayOf("affection", "confused", "dance", "embarrassed", "emoji",
+                    "excited", "frustrated", "happy", "headshake", "laughing", "nod", "proud",
+                    "relieved", "sad", "scared", "worried")
+            var soundeffects = arrayOf("proud", "surprised", "confused", "scared",
+                    "embarrased", "affection", "sad", "happy", "disgusted",
+                    "yawn", "laughing", "worried", "dontknow", "frustrated",
+                    "oops", "question", "thinking", "hello", "goodbye", "no", "confirm")
             //var text = "Hello, this message should activate the happy action?"
             log("onInteractClick was successfully called")
-            /*
-            for (act in actions) {
-                log("current act: $act")
-                var text = "$act <anim cat='$act'/>"
+            /*for (act in actions) {
+                var text = "<anim cat='$act' endNeutral='true'/>"
+                var displayView = Command.DisplayRequest.TextView("Text", act)
+                mCommandLibrary?.display(displayView, this)
+                Thread.sleep(1000)
+                mCommandLibrary?.display(Command.DisplayRequest.EyeView("Eye"), this)
                 mCommandLibrary?.say(text, this)
-                Thread.sleep(4000)
+                Thread.sleep(5000)
             }*/
-            var text = "This is a headshake <anim cat='headshake'/>"
-            mCommandLibrary?.say(text, this)
-            Thread.sleep(3000)
-            text = "And this is a nod. <anim cat='nod'/>"
-            mCommandLibrary?.say(text, this)
+            /*
+            for (ssa in soundeffects) {
+                var text = "<ssa cat='$ssa'/>"
+                var displayView = Command.DisplayRequest.TextView("Text", ssa)
+                mCommandLibrary?.display(displayView, this)
+                Thread.sleep(1000)
+                mCommandLibrary?.say(text, this)
+                Thread.sleep(5000)
+            }*/
+            /*
+            var speakingStyle = arrayOf("neutral", "enthusiastic",
+                    "sheepish", "confused", "confident")
+            var backChannels = arrayOf("yeah", "yes", "uh huh",
+                    "mm hmm",
+                    "hmm",
+                    "right", "okay", "wow!")
+            for (style in speakingStyle) {
+                mCommandLibrary?.say("<style set=\"$style\"> The current speaking style is: $style </style>", this)
+                Thread.sleep(3000)
+                for (bc in backChannels) {
+                    var text = "<style set=\"$style\"> $bc </style>"
+                    mCommandLibrary?.say(text, this)
+                    Thread.sleep(1500)
+                }
+            }*/
+            var texts = arrayOf("This is a pitch test. <pitch halftone=\"3\"> Halftone, 3</pitch> ",
+                    "<pitch halftone=\"-3\"> Halftone, negative 3</pitch> ",
+                    "<pitch band=\"1\"> Bandwidth, 1 </pitch> ",
+                    "<pitch band=\"2\"> Bandwidth, 2 </pitch> ",
+                    "<pitch band=\"2.5\"> Bandwidth, 2.5 </pitch> ",
+                    "<pitch add=\"-100\"> Additional Frequency, negative 100 </pitch> ",
+                    "<pitch add=\"100\"> Additional Frequency, 100 </pitch> ",
+                    "<pitch mult=\"0.8\"> Multiplicative Frequency, 0.8 </pitch> ",
+                    "<pitch mult=\"1.2\"> Multiplicative Frequency, 1.2 </pitch> ")
+            for (text in texts){
+                mCommandLibrary?.say(text, this)
+                Thread.sleep(3000)
+            }
         }
     }
 
