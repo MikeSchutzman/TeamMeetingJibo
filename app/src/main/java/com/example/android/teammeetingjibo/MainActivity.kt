@@ -94,6 +94,15 @@ class MainActivity : AppCompatActivity(), OnConnectionListener, CommandLibrary.O
         Log.d("TMJ", msg)
     }
 
+    // function to check if a string contains any words from a list of words
+    private fun checkFor(text: String, wordList: List<String>): Boolean {
+        for (word in wordList) {
+            if (text.toLowerCase().contains(word))
+                return true
+        }
+        return false
+    }
+
     // Log In
     fun onLoginClick() {
         JiboRemoteControl.instance.signIn(this, onAuthenticationListener)
@@ -147,6 +156,59 @@ class MainActivity : AppCompatActivity(), OnConnectionListener, CommandLibrary.O
         Toast.makeText(this@MainActivity, "Logged Out", Toast.LENGTH_SHORT).show()
     }
 
+    fun esmlProud() {
+        if (mCommandLibrary != null) {
+            var text = "<anim cat='happy' nonBlocking='true' endNeutral='true'/><ssa cat='proud'/>"
+            mCommandLibrary?.say(text, this)
+            Thread.sleep(5000)
+        }
+    }
+
+    fun esmlLaugh() {
+        if (mCommandLibrary != null) {
+            var text = "<anim cat='laughing' nonBlocking='true' endNeutral='true'/><ssa cat='laughing'/>"
+            mCommandLibrary?.say(text, this)
+            Thread.sleep(5000)
+        }
+    }
+
+    fun esmlQuestion() {
+        if (mCommandLibrary != null) {
+            var text = "<anim cat='confused' nonBlocking='true' endNeutral='true'/><ssa cat='oops'/>"
+            mCommandLibrary?.say(text, this)
+            Thread.sleep(5000)
+        }
+    }
+
+    fun esmlSad() {
+        if (mCommandLibrary != null) {
+            var text = "<anim cat='frustrated' nonBlocking='true' endNeutral='true'/><ssa cat='sad'/>"
+            mCommandLibrary?.say(text, this)
+            Thread.sleep(5000)
+        }
+    }
+
+    fun esmlPassive() {
+        if (mCommandLibrary != null) {
+            var rand = Math.random() * 100
+            var text = "<anim cat=laughing' nonBlocking='true' endNeutral='true' layers='body/>"
+            if (rand < 16)
+                text = "<anim cat='frustrated' nonBlocking='true' endNeutral='true' layers='body/>"
+            else if (rand < 32)
+                text = "<anim cat=affection' nonBlocking='true' endNeutral='true' layers='body/>"
+            else if (rand < 48)
+                text = "<anim cat=relieved' nonBlocking='true' endNeutral='true' layers='body/>"
+            else if (rand < 64)
+                text = "<anim cat=happy' nonBlocking='true' endNeutral='true' layers='body/>"
+            else if (rand < 80)
+                text = "<anim cat=excited' nonBlocking='true' endNeutral='true' layers='body/>"
+
+            mCommandLibrary?.say(text, this)
+            Thread.sleep(5000)
+        }
+    }
+
+
     // Interact Button
     fun onInteractClick() {
         if (mCommandLibrary != null) {
@@ -158,17 +220,9 @@ class MainActivity : AppCompatActivity(), OnConnectionListener, CommandLibrary.O
                     "embarrased", "affection", "sad", "happy", "disgusted",
                     "yawn", "laughing", "worried", "dontknow", "frustrated",
                     "oops", "question", "thinking", "hello", "goodbye", "no", "confirm")
-            var text = "<anim cat='affection' nonBlocking='true' layers='body, !screen'/><ssa cat='happy'/>"
-            mCommandLibrary?.say(text, this)
-            Thread.sleep(4000)
-            text = "<anim cat='laughing' nonBlocking='true'/><ssa cat='laughing'/>"
-            mCommandLibrary?.say(text, this)
-            Thread.sleep(4000)
-            text = "<anim cat='relieved' nonBlocking='true' layers='body, !screen'/><ssa cat='oops'/>"
-            mCommandLibrary?.say(text, this)
 
             for (act in actions) {
-                var text = "<anim cat='$act' endNeutral='true'/>"
+                var text = "<anim cat='$act' endNeutral='true' layers='body'/>"
                 var displayView = Command.DisplayRequest.TextView("Text", act)
                 mCommandLibrary?.display(displayView, this)
                 Thread.sleep(1000)
@@ -330,23 +384,49 @@ class MainActivity : AppCompatActivity(), OnConnectionListener, CommandLibrary.O
     override fun onVideo(s: String, videoReadyEvent: EventMessage.VideoReadyEvent, inputStream: InputStream) {}
 
     override fun onListen(transactID: String, speech: String) {
+        var proudList = listOf("happy", "great", "good", "amazing", "wonderful", "fantastic")
+        var laughList = listOf("funny", "hilarious", "haha", "ha ha")
+        var sadList = listOf("oh no", "yikes", "terrible", "awful", "horrible", "sad")
+        var questionList = listOf("confused", "don't know", "jibo", "question")
         log("Heard: $speech")
         var text = "$speech"
-        if (Math.random() * 10 < 5){
-            text = "<anim cat='relieved'/>"
-        } else if (text.toLowerCase().contains("jibo")){
-            text = "Hi! Did someone say Jibo? How can I help you?"
-        } else if (text.toLowerCase().contains("happy")){
-            text = "<anim cat='happy'/>"
-        } else if (text.toLowerCase().contains("surprised")){
-            text = "<anim cat='surprised' endNeutral='true'/>"
-        } else if (text.toLowerCase().contains("hello")){
-            text = "<style set=\"enthusiastic\">Hello to you too!</style>"
-        } else if (text.toLowerCase().contains(" hi ")){
-            text = "<style set=\"enthusiastic\">Hi! How are you?</style>"
+
+        if (nonverbalBCSwitch.isChecked) {
+            if (checkFor(text, proudList)){
+                esmlProud()
+            } else if (checkFor(text, laughList)){
+                esmlLaugh()
+            } else if (checkFor(text, questionList)){
+                esmlQuestion()
+            } else if (checkFor(text, sadList)){
+                esmlSad()
+            } else if (Math.random() * 10 < 5){
+                esmlPassive()
+            }
         }
-        mCommandLibrary?.say(text, this)
-        Thread.sleep(2500)
+        if (verbalBCSwitch.isChecked) {
+            if (text.toLowerCase().contains("jibo")) {
+                text = "Hi! Did someone say Jibo? How can I help you?"
+            } else if (text.toLowerCase().contains("right")) {
+                text = "<style set=\"enthusiastic\">Right!</style>"
+            } else if (text.toLowerCase().contains("hello")) {
+                text = "<style set=\"enthusiastic\">Hello to you too!</style>"
+            } else if (text.toLowerCase().contains(" hi ")) {
+                text = "<style set=\"enthusiastic\">Hi! How are you?</style>"
+            } else if (Math.random() * 10 < 2){
+                text = "<style set=\"confused\">Yea</style>"
+            }
+            mCommandLibrary?.say(text, this)
+            Thread.sleep(5000)
+        }
+        if (specialBCSwitch.isChecked){
+            if (Math.random() * 100 < 2){
+                text = "<style set=\"enthusiastic\">Time for a short break!</style>" +
+                        "<anim cat='dance' nonBlocking='true' endNeutral='true'/>"
+                mCommandLibrary?.say(text, this)
+                Thread.sleep(5000)
+            }
+        }
         onListenClick()
     }
 
