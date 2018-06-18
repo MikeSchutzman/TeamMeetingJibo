@@ -13,6 +13,7 @@ import android.widget.Toast
 import com.jibo.apptoolkit.protocol.model.Command
 import kotlinx.android.synthetic.main.activity_main.*
 import java.util.ArrayList
+import java.util.Random
 
 class MainActivity : AppCompatActivity(), OnConnectionListener, CommandLibrary.OnCommandResponseListener{
 
@@ -43,6 +44,8 @@ class MainActivity : AppCompatActivity(), OnConnectionListener, CommandLibrary.O
 
             // Disable Log In and enable Connect and Log Out buttons when authenticated
             loginButton?.isEnabled = false
+            listenButton?.isEnabled = false
+            moveButton?.isEnabled = false
             connectButton?.isEnabled = true
             logoutButton?.isEnabled = true
         }
@@ -147,24 +150,32 @@ class MainActivity : AppCompatActivity(), OnConnectionListener, CommandLibrary.O
     // Interact Button
     fun onInteractClick() {
         if (mCommandLibrary != null) {
-            var actions = arrayOf("affection", "confused", "dance", "embarrassed", "emoji",
+            log("onInteractClick was successfully called")
+            var actions = arrayOf("affection", "confused", "embarrassed",
                     "excited", "frustrated", "happy", "headshake", "laughing", "nod", "proud",
                     "relieved", "sad", "scared", "worried")
             var soundeffects = arrayOf("proud", "surprised", "confused", "scared",
                     "embarrased", "affection", "sad", "happy", "disgusted",
                     "yawn", "laughing", "worried", "dontknow", "frustrated",
                     "oops", "question", "thinking", "hello", "goodbye", "no", "confirm")
-            //var text = "Hello, this message should activate the happy action?"
-            log("onInteractClick was successfully called")
-            /*for (act in actions) {
+            var text = "<anim cat='affection' nonBlocking='true' layers='body, !screen'/><ssa cat='happy'/>"
+            mCommandLibrary?.say(text, this)
+            Thread.sleep(4000)
+            text = "<anim cat='laughing' nonBlocking='true'/><ssa cat='laughing'/>"
+            mCommandLibrary?.say(text, this)
+            Thread.sleep(4000)
+            text = "<anim cat='relieved' nonBlocking='true' layers='body, !screen'/><ssa cat='oops'/>"
+            mCommandLibrary?.say(text, this)
+
+            for (act in actions) {
                 var text = "<anim cat='$act' endNeutral='true'/>"
                 var displayView = Command.DisplayRequest.TextView("Text", act)
                 mCommandLibrary?.display(displayView, this)
                 Thread.sleep(1000)
                 mCommandLibrary?.display(Command.DisplayRequest.EyeView("Eye"), this)
                 mCommandLibrary?.say(text, this)
-                Thread.sleep(5000)
-            }*/
+                Thread.sleep(6000)
+            }
             /*
             for (ssa in soundeffects) {
                 var text = "<ssa cat='$ssa'/>"
@@ -172,7 +183,7 @@ class MainActivity : AppCompatActivity(), OnConnectionListener, CommandLibrary.O
                 mCommandLibrary?.display(displayView, this)
                 Thread.sleep(1000)
                 mCommandLibrary?.say(text, this)
-                Thread.sleep(5000)
+                Thread.sleep(6000)
             }*/
             /*
             var speakingStyle = arrayOf("neutral", "enthusiastic",
@@ -190,7 +201,8 @@ class MainActivity : AppCompatActivity(), OnConnectionListener, CommandLibrary.O
                     Thread.sleep(1500)
                 }
             }*/
-            var texts = arrayOf("This is a pitch test. <pitch halftone=\"3\"> Halftone, 3</pitch> ",
+            /*
+            var texts = arrayOf("<pitch halftone=\"3\"> Halftone, 3</pitch> ",
                     "<pitch halftone=\"-3\"> Halftone, negative 3</pitch> ",
                     "<pitch band=\"1\"> Bandwidth, 1 </pitch> ",
                     "<pitch band=\"2\"> Bandwidth, 2 </pitch> ",
@@ -202,7 +214,7 @@ class MainActivity : AppCompatActivity(), OnConnectionListener, CommandLibrary.O
             for (text in texts){
                 mCommandLibrary?.say(text, this)
                 Thread.sleep(3000)
-            }
+            }*/
         }
     }
 
@@ -320,21 +332,21 @@ class MainActivity : AppCompatActivity(), OnConnectionListener, CommandLibrary.O
     override fun onListen(transactID: String, speech: String) {
         log("Heard: $speech")
         var text = "$speech"
-        if (text == ""){
-            text = "Sorry, did you say something?"
+        if (Math.random() * 10 < 5){
+            text = "<anim cat='relieved'/>"
         } else if (text.toLowerCase().contains("jibo")){
             text = "Hi! Did someone say Jibo? How can I help you?"
         } else if (text.toLowerCase().contains("happy")){
             text = "<anim cat='happy'/>"
         } else if (text.toLowerCase().contains("surprised")){
-            text = "<anim cat='surprised' nonBlocking='true' endNeutral='true' />"
+            text = "<anim cat='surprised' endNeutral='true'/>"
         } else if (text.toLowerCase().contains("hello")){
-            text = "Hello to you too!"
+            text = "<style set=\"enthusiastic\">Hello to you too!</style>"
         } else if (text.toLowerCase().contains(" hi ")){
-            text = "Hi! How are you?"
+            text = "<style set=\"enthusiastic\">Hi! How are you?</style>"
         }
         mCommandLibrary?.say(text, this)
-        Thread.sleep(2000)
+        Thread.sleep(2500)
         onListenClick()
     }
 
