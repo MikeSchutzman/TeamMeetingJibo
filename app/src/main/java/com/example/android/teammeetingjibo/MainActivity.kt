@@ -182,7 +182,7 @@ class MainActivity : AppCompatActivity(), OnConnectionListener, CommandLibrary.O
 
     fun esmlSad() {
         if (mCommandLibrary != null) {
-            var text = "<anim cat='frustrated' nonBlocking='true' endNeutral='true'/><ssa cat='sad'/>"
+            var text = "<anim cat='sad' nonBlocking='true' endNeutral='true'/><ssa cat='sad'/>"
             mCommandLibrary?.say(text, this)
             Thread.sleep(5000)
         }
@@ -191,19 +191,21 @@ class MainActivity : AppCompatActivity(), OnConnectionListener, CommandLibrary.O
     fun esmlPassive() {
         if (mCommandLibrary != null) {
             var rand = Math.random() * 100
-            var text = "<anim cat=laughing' nonBlocking='true' endNeutral='true' layers='body/>"
+            var text = "<anim cat='laughing' endNeutral='true' layers='body'/>"
             if (rand < 16)
-                text = "<anim cat='frustrated' nonBlocking='true' endNeutral='true' layers='body/>"
+                text = "<anim cat='frustrated' endNeutral='true' layers='body'/>"
             else if (rand < 32)
-                text = "<anim cat=affection' nonBlocking='true' endNeutral='true' layers='body/>"
+                text = "<anim cat='affection' endNeutral='true' layers='body'/>"
             else if (rand < 48)
-                text = "<anim cat=relieved' nonBlocking='true' endNeutral='true' layers='body/>"
+                text = "<anim cat='relieved' endNeutral='true' layers='body'/>"
             else if (rand < 64)
-                text = "<anim cat=happy' nonBlocking='true' endNeutral='true' layers='body/>"
-            else if (rand < 80)
-                text = "<anim cat=excited' nonBlocking='true' endNeutral='true' layers='body/>"
-
-            mCommandLibrary?.say(text, this)
+                text = "<anim cat='happy' endNeutral='true' layers='body'/>"
+            else if (rand < 70)
+                text = "<anim cat='excited' endNeutral='true' layers='body'/>"
+            if (Math.random() * 100 < 25) {
+                mCommandLibrary?.say(text, this)
+                log(text)
+            }
             Thread.sleep(5000)
         }
     }
@@ -220,7 +222,12 @@ class MainActivity : AppCompatActivity(), OnConnectionListener, CommandLibrary.O
                     "embarrased", "affection", "sad", "happy", "disgusted",
                     "yawn", "laughing", "worried", "dontknow", "frustrated",
                     "oops", "question", "thinking", "hello", "goodbye", "no", "confirm")
-
+            esmlLaugh()
+            esmlProud()
+            esmlQuestion()
+            esmlSad()
+            esmlPassive()
+            /*
             for (act in actions) {
                 var text = "<anim cat='$act' endNeutral='true' layers='body'/>"
                 var displayView = Command.DisplayRequest.TextView("Text", act)
@@ -229,7 +236,7 @@ class MainActivity : AppCompatActivity(), OnConnectionListener, CommandLibrary.O
                 mCommandLibrary?.display(Command.DisplayRequest.EyeView("Eye"), this)
                 mCommandLibrary?.say(text, this)
                 Thread.sleep(6000)
-            }
+            }*/
             /*
             for (ssa in soundeffects) {
                 var text = "<ssa cat='$ssa'/>"
@@ -269,14 +276,25 @@ class MainActivity : AppCompatActivity(), OnConnectionListener, CommandLibrary.O
                 mCommandLibrary?.say(text, this)
                 Thread.sleep(3000)
             }*/
+            /*
+            mCommandLibrary?.listen(15L, 15L, "en", this)
+            Thread.sleep(1000)
+            var text = "<pitch band=\"1\"><duration stretch=\"1.1\"> Hello world, hope you have a wonderful day. </duration></pitch>"
+            if (Math.random() * 10 < 5)
+                text = "<style set=\"enthusiastic\"><pitch band=\"1.5\"><duration stretch=\"1.1\"> Wow! Haha, that's hilarious. </duration></pitch></style>"
+            else if (Math.random() * 10 < 5)
+                text = "<pitch halftone=\"2\"><duration stretch=\"1.1\"> Hi, my name is Jibo. </duration></pitch>"
+            mCommandLibrary?.say(text, this)*/
         }
     }
 
     // Listen Button
     fun onListenClick() {
         if (mCommandLibrary != null) {
-            mCommandLibrary?.listen(10L, 3600L, "en", this)
             log("onListenClick was successfully called")
+            mCommandLibrary?.listen(15L, 10L, "en", this)
+            if (passiveButton.isChecked)
+                esmlPassive()
         }
     }
 
@@ -377,6 +395,8 @@ class MainActivity : AppCompatActivity(), OnConnectionListener, CommandLibrary.O
 
     override fun onEvent(s: String, baseEvent: EventMessage.BaseEvent) {
         log("String: $s, BaseEvent: $baseEvent")
+        if (baseEvent.toString().contains("StopEvent"))
+            onListenClick()
     }
 
     override fun onPhoto(s: String, takePhotoEvent: EventMessage.TakePhotoEvent, inputStream: InputStream) {}
@@ -389,7 +409,7 @@ class MainActivity : AppCompatActivity(), OnConnectionListener, CommandLibrary.O
         var sadList = listOf("oh no", "yikes", "terrible", "awful", "horrible", "sad")
         var questionList = listOf("confused", "don't know", "jibo", "question")
         log("Heard: $speech")
-        var text = "$speech"
+        var text = ""
 
         if (nonverbalBCSwitch.isChecked) {
             if (checkFor(text, proudList)){
@@ -413,20 +433,29 @@ class MainActivity : AppCompatActivity(), OnConnectionListener, CommandLibrary.O
                 text = "<style set=\"enthusiastic\">Hello to you too!</style>"
             } else if (text.toLowerCase().contains(" hi ")) {
                 text = "<style set=\"enthusiastic\">Hi! How are you?</style>"
-            } else if (Math.random() * 10 < 2){
-                text = "<style set=\"confused\">Yea</style>"
+            } else {
+                var rand = Math.random() * 100
+                if (rand < 20)
+                    text = "<pitch add=\"20\"><style set=\"sheepish\"><duration stretch=\"1.2\">Yeah</duration></style></pitch>"
+                else if (rand < 40)
+                    text = "<pitch add=\"20\"><style set=\"enthusiastic\"><duration stretch=\"0.5\">Uh huh!</duration></style></pitch>"
+                else if (rand < 60)
+                    text = "<pitch add=\"20\"><style set=\"confused\"><duration stretch=\"1.5\"><phoneme ph='h m m mm'>Hmm?</phoneme></duration></style></pitch>"
+                else if (rand < 70)
+                    text = "<style set=\"enthusiastic\"><duration stretch=\"1.2\"interesting</duration></style>"
+                else if (rand < 80)
+                    text = "$speech"
             }
             mCommandLibrary?.say(text, this)
-            Thread.sleep(5000)
         }
         if (specialBCSwitch.isChecked){
             if (Math.random() * 100 < 2){
                 text = "<style set=\"enthusiastic\">Time for a short break!</style>" +
-                        "<anim cat='dance' nonBlocking='true' endNeutral='true'/>"
+                        "<anim cat='dance' endNeutral='true'/>"
                 mCommandLibrary?.say(text, this)
-                Thread.sleep(5000)
             }
         }
+        Thread.sleep(5000)
         onListenClick()
     }
 
