@@ -222,11 +222,12 @@ class MainActivity : AppCompatActivity(), OnConnectionListener, CommandLibrary.O
                     "embarrased", "affection", "sad", "happy", "disgusted",
                     "yawn", "laughing", "worried", "dontknow", "frustrated",
                     "oops", "question", "thinking", "hello", "goodbye", "no", "confirm")
+            /*
             esmlLaugh()
             esmlProud()
             esmlQuestion()
             esmlSad()
-            esmlPassive()
+            esmlPassive()*/
             /*
             for (act in actions) {
                 var text = "<anim cat='$act' endNeutral='true' layers='body'/>"
@@ -276,15 +277,15 @@ class MainActivity : AppCompatActivity(), OnConnectionListener, CommandLibrary.O
                 mCommandLibrary?.say(text, this)
                 Thread.sleep(3000)
             }*/
-            /*
-            mCommandLibrary?.listen(15L, 15L, "en", this)
-            Thread.sleep(1000)
-            var text = "<pitch band=\"1\"><duration stretch=\"1.1\"> Hello world, hope you have a wonderful day. </duration></pitch>"
+
+            mCommandLibrary?.listen(10L, 15L, "en", this)
+            Thread.sleep(2000)
+            var text = "<pitch band=\"1\"><duration stretch=\"1.1\"> Hey, can you hear me? </duration></pitch>"
             if (Math.random() * 10 < 5)
-                text = "<style set=\"enthusiastic\"><pitch band=\"1.5\"><duration stretch=\"1.1\"> Wow! Haha, that's hilarious. </duration></pitch></style>"
+                text = "<style set=\"enthusiastic\"><pitch band=\"1.5\"><duration stretch=\"1.1\"> I think the weather today is great! </duration></pitch></style>"
             else if (Math.random() * 10 < 5)
-                text = "<pitch halftone=\"2\"><duration stretch=\"1.1\"> Hi, my name is Jibo. </duration></pitch>"
-            mCommandLibrary?.say(text, this)*/
+                text = "<pitch halftone=\"2\"><duration stretch=\"1.1\"> Hi, my name is Jibo. I am a robot. </duration></pitch>"
+            mCommandLibrary?.say(text, this)
         }
     }
 
@@ -404,22 +405,26 @@ class MainActivity : AppCompatActivity(), OnConnectionListener, CommandLibrary.O
     override fun onVideo(s: String, videoReadyEvent: EventMessage.VideoReadyEvent, inputStream: InputStream) {}
 
     override fun onListen(transactID: String, speech: String) {
-        var proudList = listOf("happy", "great", "good", "amazing", "wonderful", "fantastic")
+        var proudList = listOf("happy", "cool", "fun", "great", "good", "amazing", "wonderful", "fantastic", "yes", "nice")
         var laughList = listOf("funny", "hilarious", "haha", "ha ha")
-        var sadList = listOf("oh no", "yikes", "terrible", "awful", "horrible", "sad")
-        var questionList = listOf("confused", "don't know", "jibo", "question")
+        var sadList = listOf("oh no", "yikes", "terrible", "awful", "horrible", "sad", "bad")
+        var questionList = listOf("confused", "don't know", "jibo", "question", "robot")
         log("Heard: $speech")
         var text = ""
 
         if (nonverbalBCSwitch.isChecked) {
             if (checkFor(text, proudList)){
                 esmlProud()
+                log("proud behavior activated")
             } else if (checkFor(text, laughList)){
                 esmlLaugh()
+                log("laugh behavior activated")
             } else if (checkFor(text, questionList)){
                 esmlQuestion()
+                log("question behavior activated")
             } else if (checkFor(text, sadList)){
                 esmlSad()
+                log("sad behavior activated")
             } else if (Math.random() * 10 < 5){
                 esmlPassive()
             }
@@ -433,6 +438,10 @@ class MainActivity : AppCompatActivity(), OnConnectionListener, CommandLibrary.O
                 text = "<style set=\"enthusiastic\">Hello to you too!</style>"
             } else if (text.toLowerCase().contains(" hi ")) {
                 text = "<style set=\"enthusiastic\">Hi! How are you?</style>"
+            } else if (text.toLowerCase().contains("hear me")) {
+                text = "<style set=\"enthusiastic\">Yeah, I'm listening!</style>"
+            } else if (text.toLowerCase().contains("make sense")) {
+                text = "<style set=\"enthusiastic\">That makes sense</style>"
             } else {
                 var rand = Math.random() * 100
                 if (rand < 20)
@@ -440,18 +449,22 @@ class MainActivity : AppCompatActivity(), OnConnectionListener, CommandLibrary.O
                 else if (rand < 40)
                     text = "<pitch add=\"20\"><style set=\"enthusiastic\"><duration stretch=\"0.5\">Uh huh!</duration></style></pitch>"
                 else if (rand < 60)
-                    text = "<pitch add=\"20\"><style set=\"confused\"><duration stretch=\"1.5\"><phoneme ph='h m m mm'>Hmm?</phoneme></duration></style></pitch>"
+                    text = "<pitch add=\"20\"><style set=\"enthusiastic\"><duration stretch=\"1.5\"><phoneme ph='h mm m'>Hmm?</phoneme></duration></style></pitch>"
                 else if (rand < 70)
                     text = "<style set=\"enthusiastic\"><duration stretch=\"1.2\"interesting</duration></style>"
+                else if (rand < 75)
+                    text = "<pitch add=\"20\"><style set=\"sheepish\"><duration stretch=\"1.7\">Wow</duration></style></pitch>"
                 else if (rand < 80)
-                    text = "$speech"
+                    text = "<pitch add=\"20\"><style set=\"confused\">Interesting</style></pitch>"
+                else if (rand < 82)
+                    text = "$speech?"
             }
             mCommandLibrary?.say(text, this)
         }
         if (specialBCSwitch.isChecked){
             if (Math.random() * 100 < 2){
                 text = "<style set=\"enthusiastic\">Time for a short break!</style>" +
-                        "<anim cat='dance' endNeutral='true'/>"
+                        "<anim cat='dance' filter='&music' endNeutral='true'/>"
                 mCommandLibrary?.say(text, this)
             }
         }
