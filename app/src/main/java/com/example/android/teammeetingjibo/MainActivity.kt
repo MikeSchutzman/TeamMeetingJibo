@@ -13,15 +13,16 @@ import android.widget.Toast
 import com.jibo.apptoolkit.protocol.model.Command
 import kotlinx.android.synthetic.main.activity_main.*
 import java.util.ArrayList
-import java.util.Random
 
-class MainActivity : AppCompatActivity(), OnConnectionListener, CommandLibrary.OnCommandResponseListener{
+class MainActivity : AppCompatActivity(), OnConnectionListener, CommandLibrary.OnCommandResponseListener {
 
     // Variable for using the command library
     private var mCommandLibrary: CommandLibrary? = null
 
     // List of robots associated with a user's account
     private var mRobots: ArrayList<Robot>? = null
+
+    private var latestCommandID: String? = null
 
     // Authentication
     private val onAuthenticationListener = object : JiboRemoteControl.OnAuthenticationListener {
@@ -44,8 +45,6 @@ class MainActivity : AppCompatActivity(), OnConnectionListener, CommandLibrary.O
 
             // Disable Log In and enable Connect and Log Out buttons when authenticated
             loginButton?.isEnabled = false
-            listenButton?.isEnabled = false
-            moveButton?.isEnabled = false
             connectButton?.isEnabled = true
             logoutButton?.isEnabled = true
         }
@@ -77,17 +76,20 @@ class MainActivity : AppCompatActivity(), OnConnectionListener, CommandLibrary.O
         interactButton.setOnClickListener { onInteractClick() }
         listenButton.setOnClickListener { onListenClick() }
         moveButton.setOnClickListener { onMoveClick() }
+        cancelButton.setOnClickListener { onCancelClick() }
+        move1Button.setOnClickListener { onMoveClick(1) }
+        move2Button.setOnClickListener { onMoveClick(2) }
+        move3Button.setOnClickListener { onMoveClick(3) }
+        move4Button.setOnClickListener { onMoveClick(4) }
 
         // Start with only the Log In button enabled
         loginButton.isEnabled = true
         connectButton.isEnabled = false
         disconnectButton.isEnabled = false
         logoutButton.isEnabled = false
-        interactButton.isEnabled = false
-        listenButton.isEnabled = false
-        moveButton.isEnabled = false
+        cancelButton.isEnabled = false
     }
-        // Our connectivity functions
+    // Our connectivity functions
 
     // function for logging information
     private fun log(msg: String) {
@@ -96,8 +98,9 @@ class MainActivity : AppCompatActivity(), OnConnectionListener, CommandLibrary.O
 
     // function to check if a string contains any words from a list of words
     private fun checkFor(text: String, wordList: List<String>): Boolean {
+        var lowertext = text.toLowerCase()
         for (word in wordList) {
-            if (text.toLowerCase().contains(word))
+            if (lowertext.contains(word.toLowerCase()))
                 return true
         }
         return false
@@ -148,12 +151,17 @@ class MainActivity : AppCompatActivity(), OnConnectionListener, CommandLibrary.O
         logoutButton?.isEnabled = false
         connectButton?.isEnabled = false
         disconnectButton?.isEnabled = false
-        interactButton?.isEnabled = false
-        listenButton?.isEnabled = false
-        moveButton?.isEnabled = false
+        cancelButton?.isEnabled = false
 
         // Log that we've logged out to the app
         Toast.makeText(this@MainActivity, "Logged Out", Toast.LENGTH_SHORT).show()
+    }
+
+    // Cancels the listening action
+    fun onCancelClick() {
+        if (mCommandLibrary != null && latestCommandID != null) {
+            latestCommandID = mCommandLibrary?.cancel(latestCommandID, this)
+        }
     }
 
     fun esmlProud() {
@@ -206,7 +214,7 @@ class MainActivity : AppCompatActivity(), OnConnectionListener, CommandLibrary.O
                 mCommandLibrary?.say(text, this)
                 log(text)
             }
-            Thread.sleep(5000)
+            Thread.sleep(4000)
         }
     }
 
@@ -282,7 +290,7 @@ class MainActivity : AppCompatActivity(), OnConnectionListener, CommandLibrary.O
             Thread.sleep(2000)
             var text = "<pitch band=\"1\"><duration stretch=\"1.1\"> Hey, can you hear me? </duration></pitch>"
             if (Math.random() * 10 < 5)
-                text = "<style set=\"enthusiastic\"><pitch band=\"1.5\"><duration stretch=\"1.1\"> I think the weather today is great! </duration></pitch></style>"
+                text = "<style set=\"enthusiastic\"><pitch band=\"1.5\"><duration stretch=\"1.1\"> I hope you all have a wonderful day! </duration></pitch></style>"
             else if (Math.random() * 10 < 5)
                 text = "<pitch halftone=\"2\"><duration stretch=\"1.1\"> Hi, my name is Jibo. I am a robot. </duration></pitch>"
             mCommandLibrary?.say(text, this)
@@ -293,9 +301,11 @@ class MainActivity : AppCompatActivity(), OnConnectionListener, CommandLibrary.O
     fun onListenClick() {
         if (mCommandLibrary != null) {
             log("onListenClick was successfully called")
-            mCommandLibrary?.listen(15L, 10L, "en", this)
+            latestCommandID = mCommandLibrary?.listen(10L, 10L, "en", this)
             if (passiveButton.isChecked)
                 esmlPassive()
+            if (passiveMoveButton.isChecked)
+                passiveMovement()
         }
     }
 
@@ -309,10 +319,6 @@ class MainActivity : AppCompatActivity(), OnConnectionListener, CommandLibrary.O
             var deltaX = 0
             var deltaY = 0
             var deltaZ = 0
-            // 1, 1, 1
-            // 2, -3, 1
-            // -2, 1, 1
-            // -2, -3, 1
             if (positionTextX.text.toString() != "")
                 deltaX = Integer.parseInt(positionTextX.text.toString())
             if (positionTextY.text.toString() != "")
@@ -326,7 +332,35 @@ class MainActivity : AppCompatActivity(), OnConnectionListener, CommandLibrary.O
         }
     }
 
-    // onConnectionListen overrides
+    fun onMoveClick(position: Int) {
+        // 1, 1, 1
+        // 2, -3, 1
+        // -2, 1, 1
+        // -2, -3, 1
+        if (mCommandLibrary != null){
+            var target = Command.LookAtRequest.PositionTarget(intArrayOf(1, 1, 1))
+            if (position == 2)
+                target = Command.LookAtRequest.PositionTarget(intArrayOf(2, -3, 1))
+            else if (position == 3)
+                target = Command.LookAtRequest.PositionTarget(intArrayOf(-2, -3, 1))
+            else if (position == 4)
+                target = Command.LookAtRequest.PositionTarget(intArrayOf(-2, 1, 1))
+            mCommandLibrary?.lookAt(target, this)
+        }
+    }
+
+    fun passiveMovement(){
+        var randPos = Math.random() * 100
+        if (randPos < 5)
+            onMoveClick(1)
+        else if (randPos < 10)
+            onMoveClick(2)
+        else if (randPos < 15)
+            onMoveClick(3)
+        else if (randPos < 20)
+            onMoveClick(4)
+
+    }
 
     override fun onConnected() {}
 
@@ -339,6 +373,7 @@ class MainActivity : AppCompatActivity(), OnConnectionListener, CommandLibrary.O
             interactButton?.isEnabled = true
             listenButton?.isEnabled = true
             moveButton?.isEnabled = true
+            cancelButton?.isEnabled = true
 
             // Log that we're connected to the app
             Toast.makeText(this@MainActivity, "Connected", Toast.LENGTH_SHORT).show()
@@ -396,8 +431,10 @@ class MainActivity : AppCompatActivity(), OnConnectionListener, CommandLibrary.O
 
     override fun onEvent(s: String, baseEvent: EventMessage.BaseEvent) {
         log("String: $s, BaseEvent: $baseEvent")
-        if (baseEvent.toString().contains("StopEvent"))
+        log(baseEvent.event.name)
+        if (baseEvent.toString().contains("StopEvent")) {
             onListenClick()
+        }
     }
 
     override fun onPhoto(s: String, takePhotoEvent: EventMessage.TakePhotoEvent, inputStream: InputStream) {}
@@ -405,34 +442,36 @@ class MainActivity : AppCompatActivity(), OnConnectionListener, CommandLibrary.O
     override fun onVideo(s: String, videoReadyEvent: EventMessage.VideoReadyEvent, inputStream: InputStream) {}
 
     override fun onListen(transactID: String, speech: String) {
-        var proudList = listOf("happy", "cool", "fun", "great", "good", "amazing", "wonderful", "fantastic", "yes", "nice")
+        var proudList = listOf("happy", "cool", "fun", "great", "good", "amazing", "wonderful",
+                "fantastic", "yes", "nice", "congrats", "congratulations", "yay")
         var laughList = listOf("funny", "hilarious", "haha", "ha ha")
-        var sadList = listOf("oh no", "yikes", "terrible", "awful", "horrible", "sad", "bad")
-        var questionList = listOf("confused", "don't know", "jibo", "question", "robot")
+        var sadList = listOf("oh no", "yikes", "terrible", "awful", "horrible", "sad", "bad",
+                "embarrassing", "not good")
+        var questionList = listOf("confused", "don't know", "dunno", "jibo", "question", "robot")
         log("Heard: $speech")
-        var text = ""
-
+        var text = speech
         if (nonverbalBCSwitch.isChecked) {
-            if (checkFor(text, proudList)){
+            if (checkFor(text, proudList)) {
                 esmlProud()
                 log("proud behavior activated")
-            } else if (checkFor(text, laughList)){
+            } else if (checkFor(text, laughList)) {
                 esmlLaugh()
                 log("laugh behavior activated")
-            } else if (checkFor(text, questionList)){
+            } else if (checkFor(text, questionList)) {
                 esmlQuestion()
                 log("question behavior activated")
-            } else if (checkFor(text, sadList)){
+            } else if (checkFor(text, sadList)) {
                 esmlSad()
                 log("sad behavior activated")
-            } else if (Math.random() * 10 < 5){
+            } else if (Math.random() * 10 < 5) {
                 esmlPassive()
+                log("passive behavior activated")
             }
         }
         if (verbalBCSwitch.isChecked) {
-            if (text.toLowerCase().contains("jibo")) {
+            if (checkFor(text, listOf("Jibo", "Tebow"))) {
                 text = "Hi! Did someone say Jibo? How can I help you?"
-            } else if (text.toLowerCase().contains("right")) {
+            } else if (text.toLowerCase().contains(" right ")) {
                 text = "<style set=\"enthusiastic\">Right!</style>"
             } else if (text.toLowerCase().contains("hello")) {
                 text = "<style set=\"enthusiastic\">Hello to you too!</style>"
@@ -440,35 +479,39 @@ class MainActivity : AppCompatActivity(), OnConnectionListener, CommandLibrary.O
                 text = "<style set=\"enthusiastic\">Hi! How are you?</style>"
             } else if (text.toLowerCase().contains("hear me")) {
                 text = "<style set=\"enthusiastic\">Yeah, I'm listening!</style>"
+            } else if (checkFor(text, listOf("i think", "what if", "what about", "how about"))){
+                text = "<style set=\"enthusiastic\">That's worth considering</style>"
             } else if (text.toLowerCase().contains("make sense")) {
                 text = "<style set=\"enthusiastic\">That makes sense</style>"
             } else {
                 var rand = Math.random() * 100
                 if (rand < 20)
-                    text = "<pitch add=\"20\"><style set=\"sheepish\"><duration stretch=\"1.2\">Yeah</duration></style></pitch>"
+                    text = "<pitch add=\"25\"><style set=\"sheepish\"><duration stretch=\"1.2\">Yeah</duration></style></pitch>"
                 else if (rand < 40)
-                    text = "<pitch add=\"20\"><style set=\"enthusiastic\"><duration stretch=\"0.5\">Uh huh!</duration></style></pitch>"
+                    text = "<pitch add=\"25\"><style set=\"enthusiastic\"><duration stretch=\"0.5\">Uh huh!</duration></style></pitch>"
                 else if (rand < 60)
-                    text = "<pitch add=\"20\"><style set=\"enthusiastic\"><duration stretch=\"1.5\"><phoneme ph='h mm m'>Hmm?</phoneme></duration></style></pitch>"
+                    text = "<pitch add=\"10\"><style set=\"enthusiastic\"><duration stretch=\"1.5\"><phoneme ph='h mm mm mm'>Hmm?</phoneme></duration></style></pitch>"
                 else if (rand < 70)
-                    text = "<style set=\"enthusiastic\"><duration stretch=\"1.2\"interesting</duration></style>"
+                    text = "<style set=\"enthusiastic\"><duration stretch=\"1.3\">I see</duration></style>"
                 else if (rand < 75)
-                    text = "<pitch add=\"20\"><style set=\"sheepish\"><duration stretch=\"1.7\">Wow</duration></style></pitch>"
+                    text = "<pitch add=\"25\"><style set=\"sheepish\"><duration stretch=\"1.7\">Wow</duration></style></pitch>"
                 else if (rand < 80)
-                    text = "<pitch add=\"20\"><style set=\"confused\">Interesting</style></pitch>"
-                else if (rand < 82)
-                    text = "$speech?"
+                    text = "<pitch add=\"25\"><style set=\"confused\">Interesting</style></pitch>"
+                else if (rand < 95)
+                    text = ""
             }
+            log("Jibo's Reply: $text")
             mCommandLibrary?.say(text, this)
         }
-        if (specialBCSwitch.isChecked){
-            if (Math.random() * 100 < 2){
+        if (specialBCSwitch.isChecked) {
+            if (Math.random() * 100 < 2) {
                 text = "<style set=\"enthusiastic\">Time for a short break!</style>" +
                         "<anim cat='dance' filter='&music' endNeutral='true'/>"
                 mCommandLibrary?.say(text, this)
+                Thread.sleep(1000)
             }
         }
-        Thread.sleep(5000)
+        Thread.sleep(4000)
         onListenClick()
     }
 
