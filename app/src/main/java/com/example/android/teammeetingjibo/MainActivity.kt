@@ -428,7 +428,7 @@ class MainActivity : AppCompatActivity(), OnConnectionListener, CommandLibrary.O
     }
 
     override fun onEvent(s: String, baseEvent: EventMessage.BaseEvent) {
-        log("String: $s, BaseEvent: $baseEvent")
+        //log("String: $s, BaseEvent: $baseEvent")
         log(baseEvent.event.name)
         if (baseEvent.toString().contains("StopEvent")) {
             onListenClick()
@@ -488,7 +488,7 @@ class MainActivity : AppCompatActivity(), OnConnectionListener, CommandLibrary.O
                 else if (rand < 40)
                     text = "<pitch add=\"25\"><style set=\"enthusiastic\"><duration stretch=\"0.5\">Uh huh!</duration></style></pitch>"
                 else if (rand < 50)
-                    text = "<pitch add=\"10\"><style set=\"enthusiastic\"><duration stretch=\"1.5\"><phoneme ph='h mm mm mm'>Hmm?</phoneme></duration></style></pitch>"
+                    text = "<pitch add=\"10\"><style set=\"enthusiastic\"><duration stretch=\"1.5\"><phoneme ph='h m mm m'>Hmm?</phoneme></duration></style></pitch>"
                 else if (rand < 60)
                     text = "<style set=\"enthusiastic\"><duration stretch=\"1.3\">I see</duration></style>"
                 else if (rand < 70)
