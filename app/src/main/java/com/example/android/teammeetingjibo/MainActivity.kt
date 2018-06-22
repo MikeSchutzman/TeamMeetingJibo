@@ -489,7 +489,7 @@ class MainActivity : AppCompatActivity(), OnConnectionListener, CommandLibrary.O
                 if (rand < 25)
                     text = "<pitch add=\"25\"><style set=\"sheepish\"><duration stretch=\"1.2\">Yes!</duration></style></pitch>"
                 else if (rand < 40)
-                    text = "<pitch add=\"25\"><style set=\"enthusiastic\"><duration stretch=\"0.5\">Uh huh!</duration></style></pitch>"
+                    text = "<pitch add=\"25\"><style set=\"enthusiastic\"><duration stretch=\"0.75\">Uh huh!</duration></style></pitch>"
                 else if (rand < 50)
                     text = "<pitch add=\"10\"><style set=\"enthusiastic\"><duration stretch=\"1.5\"><phoneme ph='hum mm mm m'>Hmm?</phoneme></duration></style></pitch>"
                 else if (rand < 60)
@@ -497,7 +497,11 @@ class MainActivity : AppCompatActivity(), OnConnectionListener, CommandLibrary.O
                 else if (rand < 70)
                     text = "<pitch add=\"25\"><style set=\"sheepish\"><duration stretch=\"1.7\">Wow</duration></style></pitch>"
                 else if (rand < 80)
+<<<<<<< HEAD
                     text = "<pitch add=\"25\"><style set=\"sheepsih\"><duration stretch=\"1.2\">Okay</duration></style></pitch>"
+=======
+                    text = "<pitch add=\"25\"><style set=\"enthusiastic\"><duration stretch=\"1.2\">Okay</duration></style></pitch>"
+>>>>>>> Backchanneling
                 else if (rand < 85)
                     text = "<pitch add=\"25\"><style set=\"confused\"><duration stretch=\"1.3\">Interesting</duration></style></pitch>"
                 else if (rand < 95)
