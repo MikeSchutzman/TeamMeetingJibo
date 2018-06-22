@@ -288,7 +288,7 @@ class MainActivity : AppCompatActivity(), OnConnectionListener, CommandLibrary.O
             Thread.sleep(2000)
             var text = "<style set=\"confused\"><duration stretch=\"1.2\"> Hey Jibo. <break size='1'/> How are you doing? </duration></style>"
             if (Math.random() * 10 < 5)
-                text = "<style set=\"enthusiastic\"><pitch band=\"1.5\"><duration stretch=\"1.2\"> I hope you have a wonderful day! </duration></pitch></style>"
+                text = "<style set=\"enthusiastic\"><pitch band=\"1.5\"><duration stretch=\"1.2\"> Good morning! I hope you have a wonderful day! </duration></pitch></style>"
             else if (Math.random() * 10 < 5)
                 text = "<pitch halftone=\"2\"><duration stretch=\"1.2\"> Hi, my name is Jibo. I am a robot. </duration></pitch>"
             mCommandLibrary?.say(text, this)
@@ -441,10 +441,11 @@ class MainActivity : AppCompatActivity(), OnConnectionListener, CommandLibrary.O
 
     override fun onListen(transactID: String, speech: String) {
         var proudList = listOf("happy", "cool", "fun", "great", "good", "amazing", "wonderful",
-                "fantastic", "yes", "nice", "congrats", "congratulations", "yay")
-        var laughList = listOf("funny", "hilarious", "haha", "ha ha")
+                "fantastic", "yes", "nice", "congrats", "congratulations", "yay", "best", "thanks",
+                "hurray", "woohoo", "woo hoo")
+        var laughList = listOf("funny", "hilarious", "haha", "ha ha", "laugh")
         var sadList = listOf("oh no", "yikes", "terrible", "awful", "horrible", "sad", "bad",
-                "embarrassing", "not good", "worst", "worse")
+                "embarrassing", "embarrassed", "not good", "worst", "worse", "sigh")
         var questionList = listOf("confused", "don't know", "dunno", "jibo", "question", "robot")
         log("Heard: $speech")
         var text = speech
@@ -485,18 +486,20 @@ class MainActivity : AppCompatActivity(), OnConnectionListener, CommandLibrary.O
                 var rand = Math.random() * 100
                 if (rand < 20)
                     text = "<pitch add=\"25\"><style set=\"sheepish\"><duration stretch=\"1.2\">Yeah</duration></style></pitch>"
+                if (rand < 25)
+                    text = "<pitch add=\"25\"><style set=\"sheepish\"><duration stretch=\"1.2\">Yes!</duration></style></pitch>"
                 else if (rand < 40)
                     text = "<pitch add=\"25\"><style set=\"enthusiastic\"><duration stretch=\"0.5\">Uh huh!</duration></style></pitch>"
                 else if (rand < 50)
-                    text = "<pitch add=\"10\"><style set=\"enthusiastic\"><duration stretch=\"1.5\"><phoneme ph='h m mm m'>Hmm?</phoneme></duration></style></pitch>"
+                    text = "<pitch add=\"10\"><style set=\"enthusiastic\"><duration stretch=\"1.5\"><phoneme ph='hum mm mm m'>Hmm?</phoneme></duration></style></pitch>"
                 else if (rand < 60)
                     text = "<style set=\"enthusiastic\"><duration stretch=\"1.3\">I see</duration></style>"
                 else if (rand < 70)
                     text = "<pitch add=\"25\"><style set=\"sheepish\"><duration stretch=\"1.7\">Wow</duration></style></pitch>"
                 else if (rand < 80)
-                    text = "<pitch add=\"25\"><style set=\"enthusiastic\"><duration stretch=\"0.5\">Okay</duration></style></pitch>"
+                    text = "<pitch add=\"25\"><style set=\"sheepsih\"><duration stretch=\"1.2\">Okay</duration></style></pitch>"
                 else if (rand < 85)
-                    text = "<pitch add=\"25\"><style set=\"confused\">Interesting</style></pitch>"
+                    text = "<pitch add=\"25\"><style set=\"confused\"><duration stretch=\"1.3\">Interesting</duration></style></pitch>"
                 else if (rand < 95)
                     text = ""
             }
@@ -508,7 +511,7 @@ class MainActivity : AppCompatActivity(), OnConnectionListener, CommandLibrary.O
                 text = "<style set=\"enthusiastic\">Time for a short break!</style>" +
                         "<anim cat='dance' filter='&music' endNeutral='true'/>"
                 mCommandLibrary?.say(text, this)
-                Thread.sleep(1000)
+                Thread.sleep(2000)
             }
         }
         Thread.sleep(4000)
