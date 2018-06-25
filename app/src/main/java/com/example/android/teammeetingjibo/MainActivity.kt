@@ -1,28 +1,50 @@
 package com.example.android.teammeetingjibo
 
+import android.content.Context
+import android.os.AsyncTask
 import android.support.v7.app.AppCompatActivity
 import android.os.Bundle
 import android.util.Log
+import android.view.inputmethod.InputMethodManager
+import android.widget.Toast
+import java.util.ArrayList
 import com.jibo.apptoolkit.protocol.CommandLibrary
 import com.jibo.apptoolkit.protocol.OnConnectionListener
 import com.jibo.apptoolkit.protocol.model.EventMessage
 import com.jibo.apptoolkit.android.JiboRemoteControl
 import com.jibo.apptoolkit.android.model.api.Robot
-import java.io.InputStream
-import android.widget.Toast
 import com.jibo.apptoolkit.protocol.model.Command
 import kotlinx.android.synthetic.main.activity_main.*
-import java.util.ArrayList
+
+// imports necessary for Python side
+import android.widget.EditText
+import android.widget.TextView
+import java.net.Socket
+import org.json.simple.JSONObject
+import org.json.simple.parser.*
+import java.io.*
+import java.net.SocketTimeoutException
+import java.util.regex.Pattern
+import java.util.regex.PatternSyntaxException
+
 
 class MainActivity : AppCompatActivity(), OnConnectionListener, CommandLibrary.OnCommandResponseListener {
 
     // Variable for using the command library
     private var mCommandLibrary: CommandLibrary? = null
-
     // List of robots associated with a user's account
     private var mRobots: ArrayList<Robot>? = null
-
+    // Used to be able to cancel the listening behavior
     private var latestCommandID: String? = null
+    // Variables necessary for audio
+    private var `in`: BufferedReader? = null
+    private var out: PrintWriter? = null
+    private var ipAndPort: EditText? = null
+    private var serverAddress: String? = null
+    private var text: String? = null
+    private var connection: TextView? = null
+    private var socket: Socket? = null
+    private var obj: JSONObject? = null
 
     // Authentication
     private val onAuthenticationListener = object : JiboRemoteControl.OnAuthenticationListener {
@@ -68,6 +90,13 @@ class MainActivity : AppCompatActivity(), OnConnectionListener, CommandLibrary.O
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
+        // Initialize audio things
+        ipAndPort = findViewById(R.id.ipandportInput)
+        connection = findViewById(R.id.connectionStatus)
+
+        connectToROSServerButton.setOnClickListener{ connectToROSServer() }
+        ROSInteractButton.setOnClickListener{ ROSInteract() }
+
         // Assign all buttons a function when clicked
         loginButton.setOnClickListener { onLoginClick() }
         connectButton.setOnClickListener { onConnectClick() }
@@ -95,6 +124,138 @@ class MainActivity : AppCompatActivity(), OnConnectionListener, CommandLibrary.O
     private fun log(msg: String) {
         Log.d("TMJ", msg)
     }
+
+    /* BELOW ARE FUNCTIONS NECESSARY FOR ROS IMPLEMENTATION */
+    // onClick for connectButton, function to create socket on IP at Port
+    @Throws(IOException::class)
+    fun connectToROSServer() {
+        var proper = true // was the IP and Port given in the proper format?
+        var valid = false // is the IP a valid IP?
+        var pt = ""
+        var input = ipAndPort!!.text.toString()
+        if (input.indexOf(":") == -1) {
+            connection!!.text = "Improper IP:Port format.\nPlease make sure you include the colon!"
+            proper = false
+        } else {
+            serverAddress = input.split(":".toRegex()).dropLastWhile { it.isEmpty() }.toTypedArray()[0]
+            pt = input.split(":".toRegex()).dropLastWhile { it.isEmpty() }.toTypedArray()[1]
+            connection!!.text = "Connecting..."
+        }
+
+        // if input IP and Port were in the proper format, check the validity of IP
+        if (proper)
+            valid = this.validIP(serverAddress)
+        // error message to user
+        if (proper && !valid)
+            connection!!.text = "Invalid IP"
+
+        // input IP was valid, attempt to establish connection
+        if (valid) {
+            var connectTask = ConnectTask()
+            connectTask.execute(serverAddress, pt)
+            val imm = getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
+            imm.hideSoftInputFromWindow(ipAndPort?.windowToken, 0)
+        }
+    }
+
+    // function to check if IP is a valid IP
+    // taken from the tutoring app
+    fun validIP(ip: String?): Boolean {
+        if (ip == null) return false
+        var ip2: String = ip.toString()
+        if (ip2.isEmpty()) return false
+        ip2 = ip2.trim { it <= ' ' }
+        if ((ip2.length < 6) and (ip2.length > 15)) return false
+        try {
+            val pattern = Pattern.compile("^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$")
+            val matcher = pattern.matcher(ip2)
+            return matcher.matches()
+        } catch (ex: PatternSyntaxException) {
+            return false
+        }
+    }
+
+    /*
+        function expecting to receive JSONObjects
+        known issue: sometimes TextView won't wrap text properly, but the information is unaffected
+                     restarting app seems to fix this problem sometimes, not sure how to replicate
+    */
+    @Throws(IOException::class)
+    fun ROSInteract() {
+        val getInfo = DisplayText()
+        getInfo.execute()
+    }
+
+    /*
+        Separate classes that extend AsyncTask were required for each of the functions because
+        in Android, you are not allowed to work with any kind of network connections in the main
+        thread. In this file, even the changing display and sending messages functions had to be on
+        a separate thread because changing display first required reading the received message which
+        depended on reading incoming messages from the socket, and sending messages to a socket
+        obviously relies on the network connection.
+     */
+
+    // separate class to establish socket on a separate background thread
+    inner class ConnectTask : AsyncTask<String, String, Void>() {
+
+        override fun doInBackground(vararg message: String): Void? {
+            val port = Integer.parseInt(message[1])
+            try {
+                socket = Socket(serverAddress, port)
+                connection!!.text = "Connected!"
+                Log.d("Test Client Connection", "Connection made!")
+            } catch (s: SocketTimeoutException) {
+                s.printStackTrace()
+            } catch (io: IOException) {
+                io.printStackTrace()
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+
+            // setting up the way to send and receive messages
+            try {
+                `in` = BufferedReader(
+                        InputStreamReader(socket!!.getInputStream()))
+                out = PrintWriter(socket!!.getOutputStream(), true)
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+            return null
+        }
+    }
+
+    // separate class to read and store incoming messages on a separate background thread
+    inner class DisplayText : AsyncTask<String, Void, Void>() {
+
+        override fun doInBackground(vararg message: String): Void? {
+
+            // keeps listening for messages
+            // to fix: doesn't wait for the say function to finish before reading and executing the
+            // next piece of transcript - ends up cutting himself off
+            // shouldn't be a problem since expected usage isn't to repeat everything people say
+            while (socket!!.isConnected) {
+                text = `in`!!.readLine()
+
+                if (text != null) {
+                    val parser = JSONParser()
+                    try {
+                        obj = parser.parse(text) as JSONObject
+                    } catch (e: Exception) {
+                        e.printStackTrace()
+                    }
+
+                    val speech = "Participant " + obj!!["pid"] + "said <break size='0.5'/>" + obj!!["transcript"]
+                    val nouns = "These are the nouns <break size='0.5'/>" + obj!!["nouns"]
+                    val verbs = "These are the verbs <break size='0.5'/>" + obj!!["verbs"]
+                    mCommandLibrary?.say("$speech <break size='0.5'/> $nouns <break size='0.5'/> $verbs", this@MainActivity)
+                    Thread.sleep(7500)
+                }
+            }
+            return null
+        }
+    }
+
+    /* END OF ROS FUNCTIONS */
 
     // function to check if a string contains any words from a list of words
     private fun checkFor(text: String, wordList: List<String>): Boolean {
@@ -497,11 +658,7 @@ class MainActivity : AppCompatActivity(), OnConnectionListener, CommandLibrary.O
                 else if (rand < 70)
                     text = "<pitch add=\"25\"><style set=\"sheepish\"><duration stretch=\"1.7\">Wow</duration></style></pitch>"
                 else if (rand < 80)
-<<<<<<< HEAD
-                    text = "<pitch add=\"25\"><style set=\"sheepsih\"><duration stretch=\"1.2\">Okay</duration></style></pitch>"
-=======
-                    text = "<pitch add=\"25\"><style set=\"enthusiastic\"><duration stretch=\"1.2\">Okay</duration></style></pitch>"
->>>>>>> Backchanneling
+                    text = "<pitch add=\"25\"><style set=\"sheepish\"><duration stretch=\"1.2\">Okay</duration></style></pitch>"
                 else if (rand < 85)
                     text = "<pitch add=\"25\"><style set=\"confused\"><duration stretch=\"1.3\">Interesting</duration></style></pitch>"
                 else if (rand < 95)
