@@ -259,7 +259,11 @@ class MainActivity : AppCompatActivity(), OnConnectionListener, CommandLibrary.O
                     val verbs = "These are the verbs <break size='0.5'/>" + obj!!["verbs"]
                     mCommandLibrary?.say("$speech <break size='0.5'/> $nouns <break size='0.5'/> $verbs", this@MainActivity)
                     Thread.sleep(7500)*/
-                    onListen("Manual", obj!!["transcript"].toString())
+                    log("doInBackground: " + obj!!["transcript"].toString())
+                    if (obj!!["confidence"].toString().toDouble() > 0.85)
+                        onListen("Manual", obj!!["transcript"].toString())
+                    else
+                        onListen("Manual", "")
                 }
             }
             return null
@@ -384,7 +388,7 @@ class MainActivity : AppCompatActivity(), OnConnectionListener, CommandLibrary.O
                 text = "<anim cat='excited' endNeutral='true' layers='body'/>"
             if (Math.random() * 100 < 25) {
                 mCommandLibrary?.say(text, this)
-                log(text)
+                log("Passive movement: $text")
             }
             Thread.sleep(4000)
         }
@@ -402,13 +406,13 @@ class MainActivity : AppCompatActivity(), OnConnectionListener, CommandLibrary.O
                     "embarrased", "affection", "sad", "happy", "disgusted",
                     "yawn", "laughing", "worried", "dontknow", "frustrated",
                     "oops", "question", "thinking", "hello", "goodbye", "no", "confirm")
-            /*
+
             esmlLaugh()
             esmlProud()
             esmlQuestion()
             esmlSad()
-            esmlPassive()*/
-            /*
+            esmlPassive()
+
             for (act in actions) {
                 var text = "<anim cat='$act' endNeutral='true' layers='body'/>"
                 var displayView = Command.DisplayRequest.TextView("Text", act)
@@ -417,8 +421,8 @@ class MainActivity : AppCompatActivity(), OnConnectionListener, CommandLibrary.O
                 mCommandLibrary?.display(Command.DisplayRequest.EyeView("Eye"), this)
                 mCommandLibrary?.say(text, this)
                 Thread.sleep(6000)
-            }*/
-            /*
+            }
+
             for (ssa in soundeffects) {
                 var text = "<ssa cat='$ssa'/>"
                 var displayView = Command.DisplayRequest.TextView("Text", ssa)
@@ -426,7 +430,7 @@ class MainActivity : AppCompatActivity(), OnConnectionListener, CommandLibrary.O
                 Thread.sleep(1000)
                 mCommandLibrary?.say(text, this)
                 Thread.sleep(6000)
-            }*/
+            }
             /*
             var speakingStyle = arrayOf("neutral", "enthusiastic",
                     "sheepish", "confused", "confident")
@@ -440,8 +444,8 @@ class MainActivity : AppCompatActivity(), OnConnectionListener, CommandLibrary.O
                     mCommandLibrary?.say(text, this)
                     Thread.sleep(1500)
                 }
-            }*/
-            /*
+            }
+
             var texts = arrayOf("<pitch halftone=\"3\"> Halftone, 3</pitch> ",
                     "<pitch halftone=\"-3\"> Halftone, negative 3</pitch> ",
                     "<pitch band=\"1\"> Bandwidth, 1 </pitch> ",
@@ -455,7 +459,7 @@ class MainActivity : AppCompatActivity(), OnConnectionListener, CommandLibrary.O
                 mCommandLibrary?.say(text, this)
                 Thread.sleep(3000)
             }*/
-
+            /*
             mCommandLibrary?.listen(10L, 15L, "en", this)
             Thread.sleep(2000)
             var text = "<style set=\"confused\"><duration stretch=\"1.2\"> Hey Jibo. <break size='1'/> How are you doing? </duration></style>"
@@ -464,20 +468,20 @@ class MainActivity : AppCompatActivity(), OnConnectionListener, CommandLibrary.O
             else if (Math.random() * 10 < 5)
                 text = "<pitch halftone=\"2\"><duration stretch=\"1.2\"> Hi, my name is Jibo. I am a robot. </duration></pitch>"
             mCommandLibrary?.say(text, this)
+            */
         }
     }
 
     // Listen Button
     fun onListenClick() {
-        if (mCommandLibrary != null && listenButton.isChecked) {
+        if (mCommandLibrary != null) {
             log("onListenClick was successfully called")
-            latestCommandID = mCommandLibrary?.listen(10L, 10L, "en", this)
+            if (listenButton.isChecked)
+                latestCommandID = mCommandLibrary?.listen(10L, 10L, "en", this)
             if (passiveButton.isChecked)
                 esmlPassive()
             if (passiveMoveButton.isChecked)
                 passiveMovement()
-        } else if (mCommandLibrary != null){
-            latestCommandID = mCommandLibrary?.cancel(latestCommandID, this)
         }
     }
 
@@ -505,10 +509,6 @@ class MainActivity : AppCompatActivity(), OnConnectionListener, CommandLibrary.O
     }
 
     fun onMoveClick(position: Int) {
-        // 1, 1, 1
-        // 2, -3, 1
-        // -2, 1, 1
-        // -2, -3, 1
         if (mCommandLibrary != null){
             var target = Command.LookAtRequest.PositionTarget(intArrayOf(-2, -1, 1))
             if (position == 2)
@@ -531,7 +531,6 @@ class MainActivity : AppCompatActivity(), OnConnectionListener, CommandLibrary.O
             onMoveClick(3)
         else if (randPos < 20)
             onMoveClick(4)
-
     }
 
     override fun onConnected() {}
@@ -603,8 +602,8 @@ class MainActivity : AppCompatActivity(), OnConnectionListener, CommandLibrary.O
 
     override fun onEvent(s: String, baseEvent: EventMessage.BaseEvent) {
         //log("String: $s, BaseEvent: $baseEvent")
-        log(baseEvent.event.name)
-        if (baseEvent.toString().contains("StopEvent") && listenButton.isChecked) {
+        log("Event detected: " + baseEvent.event.name)
+        if (baseEvent.toString().contains("StopEvent")) {
             onListenClick()
         }
     }
@@ -621,7 +620,7 @@ class MainActivity : AppCompatActivity(), OnConnectionListener, CommandLibrary.O
         var sadList = listOf("oh no", "yikes", "terrible", "awful", "horrible", "sad", "bad",
                 "embarrassing", "embarrassed", "not good", "worst", "worse", "sigh")
         var questionList = listOf("confused", "don't know", "dunno", "jibo", "question", "robot")
-        log("Heard: $speech")
+        log("onListen: $speech")
         var text = speech
         if (nonverbalBCSwitch.isChecked) {
             if (checkFor(text, proudList)) {
@@ -689,8 +688,7 @@ class MainActivity : AppCompatActivity(), OnConnectionListener, CommandLibrary.O
             }
         }
         Thread.sleep(4000)
-        if (listenButton.isChecked)
-            onListenClick()
+        onListenClick()
     }
 
     override fun onParseError() {}
