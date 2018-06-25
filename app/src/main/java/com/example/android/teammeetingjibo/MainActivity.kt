@@ -201,9 +201,16 @@ class MainActivity : AppCompatActivity(), OnConnectionListener, CommandLibrary.O
         override fun doInBackground(vararg message: String): Void? {
             val port = Integer.parseInt(message[1])
             try {
+                log("Attempting ROS connection")
                 socket = Socket(serverAddress, port)
-                connection!!.text = "Connected!"
-                Log.d("Test Client Connection", "Connection made!")
+                if (socket!!.isConnected) {
+                    log("ROS connection made")
+                    connection!!.text = "Connected!"
+                }
+                else {
+                    log("ROS unable to connect")
+                    connection!!.text = "Unable to connect"
+                }
             } catch (s: SocketTimeoutException) {
                 s.printStackTrace()
             } catch (io: IOException) {
@@ -243,12 +250,16 @@ class MainActivity : AppCompatActivity(), OnConnectionListener, CommandLibrary.O
                     } catch (e: Exception) {
                         e.printStackTrace()
                     }
-
+                    if (radioSpeaker.isChecked){
+                        onMoveClick(obj!!["pid"].toString().toInt())
+                    }
+                    /*
                     val speech = "Participant " + obj!!["pid"] + "said <break size='0.5'/>" + obj!!["transcript"]
                     val nouns = "These are the nouns <break size='0.5'/>" + obj!!["nouns"]
                     val verbs = "These are the verbs <break size='0.5'/>" + obj!!["verbs"]
                     mCommandLibrary?.say("$speech <break size='0.5'/> $nouns <break size='0.5'/> $verbs", this@MainActivity)
-                    Thread.sleep(7500)
+                    Thread.sleep(7500)*/
+                    onListen("Manual", obj!!["transcript"].toString())
                 }
             }
             return null
@@ -458,13 +469,15 @@ class MainActivity : AppCompatActivity(), OnConnectionListener, CommandLibrary.O
 
     // Listen Button
     fun onListenClick() {
-        if (mCommandLibrary != null) {
+        if (mCommandLibrary != null && listenButton.isChecked) {
             log("onListenClick was successfully called")
             latestCommandID = mCommandLibrary?.listen(10L, 10L, "en", this)
             if (passiveButton.isChecked)
                 esmlPassive()
             if (passiveMoveButton.isChecked)
                 passiveMovement()
+        } else if (mCommandLibrary != null){
+            latestCommandID = mCommandLibrary?.cancel(latestCommandID, this)
         }
     }
 
@@ -497,11 +510,11 @@ class MainActivity : AppCompatActivity(), OnConnectionListener, CommandLibrary.O
         // -2, 1, 1
         // -2, -3, 1
         if (mCommandLibrary != null){
-            var target = Command.LookAtRequest.PositionTarget(intArrayOf(1, 1, 1))
+            var target = Command.LookAtRequest.PositionTarget(intArrayOf(-2, -1, 1))
             if (position == 2)
                 target = Command.LookAtRequest.PositionTarget(intArrayOf(2, -3, 1))
             else if (position == 3)
-                target = Command.LookAtRequest.PositionTarget(intArrayOf(-2, -3, 1))
+                target = Command.LookAtRequest.PositionTarget(intArrayOf(1, 1, 1))
             else if (position == 4)
                 target = Command.LookAtRequest.PositionTarget(intArrayOf(-2, 1, 1))
             mCommandLibrary?.lookAt(target, this)
@@ -591,7 +604,7 @@ class MainActivity : AppCompatActivity(), OnConnectionListener, CommandLibrary.O
     override fun onEvent(s: String, baseEvent: EventMessage.BaseEvent) {
         //log("String: $s, BaseEvent: $baseEvent")
         log(baseEvent.event.name)
-        if (baseEvent.toString().contains("StopEvent")) {
+        if (baseEvent.toString().contains("StopEvent") && listenButton.isChecked) {
             onListenClick()
         }
     }
@@ -676,7 +689,8 @@ class MainActivity : AppCompatActivity(), OnConnectionListener, CommandLibrary.O
             }
         }
         Thread.sleep(4000)
-        onListenClick()
+        if (listenButton.isChecked)
+            onListenClick()
     }
 
     override fun onParseError() {}
