@@ -34,8 +34,10 @@ class MainActivity : AppCompatActivity(), OnConnectionListener, CommandLibrary.O
     private var mCommandLibrary: CommandLibrary? = null
     // List of robots associated with a user's account
     private var mRobots: ArrayList<Robot>? = null
-    // Used to be able to cancel the listening behavior
+    // Used to be able to cancel the most recent behavior
     private var latestCommandID: String? = null
+    // Duration Jibo waits after each behavior
+    private var waitTime: Long = 0
     // Variables necessary for audio
     private var `in`: BufferedReader? = null
     private var out: PrintWriter? = null
@@ -221,8 +223,7 @@ class MainActivity : AppCompatActivity(), OnConnectionListener, CommandLibrary.O
 
             // setting up the way to send and receive messages
             try {
-                `in` = BufferedReader(
-                        InputStreamReader(socket!!.getInputStream()))
+                `in` = BufferedReader(InputStreamReader(socket!!.getInputStream()))
                 out = PrintWriter(socket!!.getOutputStream(), true)
             } catch (e: Exception) {
                 e.printStackTrace()
@@ -250,8 +251,11 @@ class MainActivity : AppCompatActivity(), OnConnectionListener, CommandLibrary.O
                     } catch (e: Exception) {
                         e.printStackTrace()
                     }
-                    if (radioSpeaker.isChecked){
+                    if (radioSpeaker.isChecked &&
+                            ( obj!!["transcript"] == "!" ||
+                                    obj!!["speech_duration"].toString().toDouble() > 2)){
                         onMoveClick(obj!!["pid"].toString().toInt())
+                        onListen("Manual", "!")
                     }
                     /*
                     val speech = "Participant " + obj!!["pid"] + "said <break size='0.5'/>" + obj!!["transcript"]
@@ -262,7 +266,7 @@ class MainActivity : AppCompatActivity(), OnConnectionListener, CommandLibrary.O
                     log("doInBackground: " + obj!!["transcript"].toString())
                     if (obj!!["confidence"].toString().toDouble() > 0.85)
                         onListen("Manual", obj!!["transcript"].toString())
-                    else
+                    else if (obj!!["transcript"] != "!")
                         onListen("Manual", "")
                 }
             }
@@ -304,9 +308,7 @@ class MainActivity : AppCompatActivity(), OnConnectionListener, CommandLibrary.O
             var myBot = mRobots!![botNum]
             JiboRemoteControl.instance.connect(myBot, this)
         }
-
-        // Disable the connect button while we're connecting
-        // to prevent double-clicking
+        // Disable the connect button while we're connecting to prevent double-clicking
         connectButton?.isEnabled = false
     }
 
@@ -333,7 +335,7 @@ class MainActivity : AppCompatActivity(), OnConnectionListener, CommandLibrary.O
         Toast.makeText(this@MainActivity, "Logged Out", Toast.LENGTH_SHORT).show()
     }
 
-    // Cancels the listening action
+    // Cancels the latest (passive) action
     fun onCancelClick() {
         if (mCommandLibrary != null && latestCommandID != null) {
             latestCommandID = mCommandLibrary?.cancel(latestCommandID, this)
@@ -344,7 +346,7 @@ class MainActivity : AppCompatActivity(), OnConnectionListener, CommandLibrary.O
         if (mCommandLibrary != null) {
             var text = "<anim cat='happy' nonBlocking='true' endNeutral='true'/><ssa cat='proud'/>"
             mCommandLibrary?.say(text, this)
-            Thread.sleep(5000)
+            Thread.sleep(waitTime)
         }
     }
 
@@ -352,7 +354,7 @@ class MainActivity : AppCompatActivity(), OnConnectionListener, CommandLibrary.O
         if (mCommandLibrary != null) {
             var text = "<anim cat='laughing' nonBlocking='true' endNeutral='true'/><ssa cat='laughing'/>"
             mCommandLibrary?.say(text, this)
-            Thread.sleep(5000)
+            Thread.sleep(waitTime)
         }
     }
 
@@ -360,7 +362,7 @@ class MainActivity : AppCompatActivity(), OnConnectionListener, CommandLibrary.O
         if (mCommandLibrary != null) {
             var text = "<anim cat='confused' nonBlocking='true' endNeutral='true'/><ssa cat='oops'/>"
             mCommandLibrary?.say(text, this)
-            Thread.sleep(5000)
+            Thread.sleep(waitTime)
         }
     }
 
@@ -368,7 +370,7 @@ class MainActivity : AppCompatActivity(), OnConnectionListener, CommandLibrary.O
         if (mCommandLibrary != null) {
             var text = "<anim cat='sad' nonBlocking='true' endNeutral='true'/><ssa cat='sad'/>"
             mCommandLibrary?.say(text, this)
-            Thread.sleep(5000)
+            Thread.sleep(waitTime)
         }
     }
 
@@ -387,10 +389,10 @@ class MainActivity : AppCompatActivity(), OnConnectionListener, CommandLibrary.O
             else if (rand < 70)
                 text = "<anim cat='excited' endNeutral='true' layers='body'/>"
             if (Math.random() * 100 < 25) {
-                mCommandLibrary?.say(text, this)
+                latestCommandID = mCommandLibrary?.say(text, this)
                 log("Passive movement: $text")
             }
-            Thread.sleep(4000)
+            Thread.sleep(waitTime)
         }
     }
 
@@ -399,6 +401,7 @@ class MainActivity : AppCompatActivity(), OnConnectionListener, CommandLibrary.O
     fun onInteractClick() {
         if (mCommandLibrary != null) {
             log("onInteractClick was successfully called")
+            /*
             var actions = arrayOf("affection", "confused", "embarrassed",
                     "excited", "frustrated", "happy", "headshake", "laughing", "nod", "proud",
                     "relieved", "sad", "scared", "worried")
@@ -430,7 +433,7 @@ class MainActivity : AppCompatActivity(), OnConnectionListener, CommandLibrary.O
                 Thread.sleep(1000)
                 mCommandLibrary?.say(text, this)
                 Thread.sleep(6000)
-            }
+            }*/
             /*
             var speakingStyle = arrayOf("neutral", "enthusiastic",
                     "sheepish", "confused", "confident")
@@ -459,16 +462,13 @@ class MainActivity : AppCompatActivity(), OnConnectionListener, CommandLibrary.O
                 mCommandLibrary?.say(text, this)
                 Thread.sleep(3000)
             }*/
-            /*
-            mCommandLibrary?.listen(10L, 15L, "en", this)
-            Thread.sleep(2000)
+
             var text = "<style set=\"confused\"><duration stretch=\"1.2\"> Hey Jibo. <break size='1'/> How are you doing? </duration></style>"
             if (Math.random() * 10 < 5)
                 text = "<style set=\"enthusiastic\"><pitch band=\"1.5\"><duration stretch=\"1.2\"> Good morning! I hope you have a wonderful day! </duration></pitch></style>"
             else if (Math.random() * 10 < 5)
                 text = "<pitch halftone=\"2\"><duration stretch=\"1.2\"> Hi, my name is Jibo. I am a robot. </duration></pitch>"
-            mCommandLibrary?.say(text, this)
-            */
+            latestCommandID = mCommandLibrary?.say(text, this)
         }
     }
 
@@ -486,7 +486,7 @@ class MainActivity : AppCompatActivity(), OnConnectionListener, CommandLibrary.O
     }
 
     // Move Button
-    fun onMoveClick() {
+    fun onMoveClick(){
         if (mCommandLibrary != null) {
             //var target = Command.LookAtRequest.PositionTarget(intArrayOf(10, 1, 1))
             //var target = Command.LookAtRequest.AngleTarget(intArrayOf(3, 1))
@@ -508,29 +508,30 @@ class MainActivity : AppCompatActivity(), OnConnectionListener, CommandLibrary.O
         }
     }
 
-    fun onMoveClick(position: Int) {
+    fun onMoveClick(position: Int) : String? {
         if (mCommandLibrary != null){
-            var target = Command.LookAtRequest.PositionTarget(intArrayOf(-2, -1, 1))
+            var target = Command.LookAtRequest.PositionTarget(intArrayOf(4, -1, 1))
             if (position == 2)
-                target = Command.LookAtRequest.PositionTarget(intArrayOf(2, -3, 1))
+                target = Command.LookAtRequest.PositionTarget(intArrayOf(2, 2, 1))
             else if (position == 3)
-                target = Command.LookAtRequest.PositionTarget(intArrayOf(1, 1, 1))
+                target = Command.LookAtRequest.PositionTarget(intArrayOf(1, 4, 1))
             else if (position == 4)
-                target = Command.LookAtRequest.PositionTarget(intArrayOf(-2, 1, 1))
-            mCommandLibrary?.lookAt(target, this)
+                target = Command.LookAtRequest.PositionTarget(intArrayOf(2, -2, 1))
+            return mCommandLibrary?.lookAt(target, this)
         }
+        return null
     }
 
     fun passiveMovement(){
         var randPos = Math.random() * 100
         if (randPos < 5)
-            onMoveClick(1)
+            latestCommandID = onMoveClick(1)
         else if (randPos < 10)
-            onMoveClick(2)
+            latestCommandID = onMoveClick(2)
         else if (randPos < 15)
-            onMoveClick(3)
+            latestCommandID = onMoveClick(3)
         else if (randPos < 20)
-            onMoveClick(4)
+            latestCommandID = onMoveClick(4)
     }
 
     override fun onConnected() {}
@@ -615,29 +616,33 @@ class MainActivity : AppCompatActivity(), OnConnectionListener, CommandLibrary.O
     override fun onListen(transactID: String, speech: String) {
         var proudList = listOf("happy", "cool", "fun", "great", "good", "amazing", "wonderful",
                 "fantastic", "yes", "nice", "congrats", "congratulations", "yay", "best", "thanks",
-                "hurray", "woohoo", "woo hoo")
+                "hurray", "woohoo", "woo hoo", "excited", "exciting")
         var laughList = listOf("funny", "hilarious", "haha", "ha ha", "laugh")
         var sadList = listOf("oh no", "yikes", "terrible", "awful", "horrible", "sad", "bad",
                 "embarrassing", "embarrassed", "not good", "worst", "worse", "sigh")
-        var questionList = listOf("confused", "don't know", "dunno", "jibo", "question", "robot")
+        var questionList = listOf("confused", "don't know", "do not know", "dunno", "jibo", "tebow",
+                "question", "robot")
         log("onListen: $speech")
         var text = speech
         if (nonverbalBCSwitch.isChecked) {
             if (checkFor(text, proudList)) {
+                onCancelClick()
                 esmlProud()
                 log("proud behavior activated")
             } else if (checkFor(text, laughList)) {
+                onCancelClick()
                 esmlLaugh()
                 log("laugh behavior activated")
             } else if (checkFor(text, questionList)) {
+                onCancelClick()
                 esmlQuestion()
                 log("question behavior activated")
             } else if (checkFor(text, sadList)) {
+                onCancelClick()
                 esmlSad()
                 log("sad behavior activated")
             } else if (Math.random() * 10 < 5) {
                 esmlPassive()
-                log("passive behavior activated")
             }
         }
         if (verbalBCSwitch.isChecked) {
@@ -657,37 +662,38 @@ class MainActivity : AppCompatActivity(), OnConnectionListener, CommandLibrary.O
                 text = "<style set=\"enthusiastic\">That makes sense</style>"
             } else {
                 var rand = Math.random() * 100
-                if (rand < 20)
+                if (rand < verbalBCProbBar.progress/8)
                     text = "<pitch add=\"25\"><style set=\"sheepish\"><duration stretch=\"1.2\">Yeah</duration></style></pitch>"
-                if (rand < 25)
+                else if (rand < 2 * verbalBCProbBar.progress/8)
                     text = "<pitch add=\"25\"><style set=\"sheepish\"><duration stretch=\"1.2\">Yes!</duration></style></pitch>"
-                else if (rand < 40)
+                else if (rand < 3 * verbalBCProbBar.progress/8)
                     text = "<pitch add=\"25\"><style set=\"enthusiastic\"><duration stretch=\"0.75\">Uh huh!</duration></style></pitch>"
-                else if (rand < 50)
-                    text = "<pitch add=\"10\"><style set=\"enthusiastic\"><duration stretch=\"1.5\"><phoneme ph='hum mm mm m'>Hmm?</phoneme></duration></style></pitch>"
-                else if (rand < 60)
+                else if (rand < 4 * verbalBCProbBar.progress/8)
+                    text = "<pitch add=\"10\"><style set=\"enthusiastic\"><duration stretch=\"1.5\"><phoneme ph='hum m m m'>Hmm?</phoneme></duration></style></pitch>"
+                else if (rand < 5 * verbalBCProbBar.progress/8)
                     text = "<style set=\"enthusiastic\"><duration stretch=\"1.3\">I see</duration></style>"
-                else if (rand < 70)
+                else if (rand < 6 * verbalBCProbBar.progress/8)
                     text = "<pitch add=\"25\"><style set=\"sheepish\"><duration stretch=\"1.7\">Wow</duration></style></pitch>"
-                else if (rand < 80)
+                else if (rand < 7 * verbalBCProbBar.progress/8)
                     text = "<pitch add=\"25\"><style set=\"sheepish\"><duration stretch=\"1.2\">Okay</duration></style></pitch>"
-                else if (rand < 85)
+                else if (rand < 8 * verbalBCProbBar.progress/8)
                     text = "<pitch add=\"25\"><style set=\"confused\"><duration stretch=\"1.3\">Interesting</duration></style></pitch>"
                 else if (rand < 95)
                     text = ""
             }
             log("Jibo's Reply: $text")
+            onCancelClick()
             mCommandLibrary?.say(text, this)
+            Thread.sleep(waitTime)
         }
         if (specialBCSwitch.isChecked) {
             if (Math.random() * 100 < 2) {
                 text = "<style set=\"enthusiastic\">Time for a short break!</style>" +
                         "<anim cat='dance' filter='&music' endNeutral='true'/>"
                 mCommandLibrary?.say(text, this)
-                Thread.sleep(2000)
+                Thread.sleep(waitTime)
             }
         }
-        Thread.sleep(4000)
         onListenClick()
     }
 
