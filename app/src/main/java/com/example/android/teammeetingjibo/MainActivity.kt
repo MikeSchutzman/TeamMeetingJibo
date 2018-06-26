@@ -264,7 +264,7 @@ class MainActivity : AppCompatActivity(), OnConnectionListener, CommandLibrary.O
                     mCommandLibrary?.say("$speech <break size='0.5'/> $nouns <break size='0.5'/> $verbs", this@MainActivity)
                     Thread.sleep(7500)*/
                     log("doInBackground: " + obj!!["transcript"].toString())
-                    if (obj!!["confidence"].toString().toDouble() > 0.85)
+                    if (obj!!["confidence"].toString().toDouble() > 0.8)
                         onListen("Manual", obj!!["transcript"].toString())
                     else if (obj!!["transcript"] != "!")
                         onListen("Manual", "")
@@ -619,7 +619,8 @@ class MainActivity : AppCompatActivity(), OnConnectionListener, CommandLibrary.O
                 "hurray", "woohoo", "woo hoo", "excited", "exciting")
         var laughList = listOf("funny", "hilarious", "haha", "ha ha", "laugh")
         var sadList = listOf("oh no", "yikes", "terrible", "awful", "horrible", "sad", "bad",
-                "embarrassing", "embarrassed", "not good", "worst", "worse", "sigh")
+                "embarrassing", "embarrassed", "not good", "worst", "worse", "sigh", "frustrated",
+                "frustrating")
         var questionList = listOf("confused", "don't know", "do not know", "dunno", "jibo", "tebow",
                 "question", "robot")
         log("onListen: $speech")
