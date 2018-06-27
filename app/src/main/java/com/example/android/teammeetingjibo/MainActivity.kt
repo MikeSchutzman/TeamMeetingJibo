@@ -625,6 +625,7 @@ class MainActivity : AppCompatActivity(), OnConnectionListener, CommandLibrary.O
                 "question", "robot")
         log("onListen: $speech")
         var text = speech
+        var tempSleep = 3000
         if (nonverbalBCSwitch.isChecked) {
             if (checkFor(text, proudList)) {
                 onCancelClick()
@@ -642,11 +643,13 @@ class MainActivity : AppCompatActivity(), OnConnectionListener, CommandLibrary.O
                 onCancelClick()
                 esmlSad()
                 log("sad behavior activated")
-            } else if (Math.random() * 10 < 5) {
-                esmlPassive()
+            } else {
+                tempSleep = 0
             }
+            Thread.sleep(tempSleep.toLong())
         }
         if (verbalBCSwitch.isChecked) {
+            tempSleep = 3000
             if (checkFor(text, listOf("Jibo", "Tebow"))) {
                 text = "Hi! Did someone say Jibo? How can I help you?"
             } else if (text.toLowerCase().contains(" right ")) {
@@ -662,29 +665,33 @@ class MainActivity : AppCompatActivity(), OnConnectionListener, CommandLibrary.O
             } else if (text.toLowerCase().contains("make sense")) {
                 text = "<style set=\"enthusiastic\">That makes sense</style>"
             } else {
+                tempSleep = 0
                 var rand = Math.random() * 100
-                if (rand < verbalBCProbBar.progress/8)
+                if (rand < verbalBCProbBar.progress/9)
                     text = "<pitch add=\"25\"><style set=\"sheepish\"><duration stretch=\"1.2\">Yeah</duration></style></pitch>"
-                else if (rand < 2 * verbalBCProbBar.progress/8)
+                else if (rand < 2 * verbalBCProbBar.progress/9)
                     text = "<pitch add=\"25\"><style set=\"sheepish\"><duration stretch=\"1.2\">Yes!</duration></style></pitch>"
-                else if (rand < 3 * verbalBCProbBar.progress/8)
+                else if (rand < 3 * verbalBCProbBar.progress/9)
                     text = "<pitch add=\"25\"><style set=\"enthusiastic\"><duration stretch=\"0.75\">Uh huh!</duration></style></pitch>"
-                else if (rand < 4 * verbalBCProbBar.progress/8)
-                    text = "<pitch add=\"10\"><style set=\"enthusiastic\"><duration stretch=\"1.5\"><phoneme ph='hum m m m'>Hmm?</phoneme></duration></style></pitch>"
-                else if (rand < 5 * verbalBCProbBar.progress/8)
+                else if (rand < 4 * verbalBCProbBar.progress/9)
+                    text = "<pitch add=\"10\"><style set=\"enthusiastic\"><duration stretch=\"1.5\"><phoneme ph='hum m m mm'>Hmm?</phoneme></duration></style></pitch>"
+                else if (rand < 5 * verbalBCProbBar.progress/9)
                     text = "<style set=\"enthusiastic\"><duration stretch=\"1.3\">I see</duration></style>"
-                else if (rand < 6 * verbalBCProbBar.progress/8)
+                else if (rand < 6 * verbalBCProbBar.progress/9)
                     text = "<pitch add=\"25\"><style set=\"sheepish\"><duration stretch=\"1.7\">Wow</duration></style></pitch>"
-                else if (rand < 7 * verbalBCProbBar.progress/8)
+                else if (rand < 7 * verbalBCProbBar.progress/9)
                     text = "<pitch add=\"25\"><style set=\"sheepish\"><duration stretch=\"1.2\">Okay</duration></style></pitch>"
-                else if (rand < 8 * verbalBCProbBar.progress/8)
+                else if (rand < 8 * verbalBCProbBar.progress/9)
                     text = "<pitch add=\"25\"><style set=\"confused\"><duration stretch=\"1.3\">Interesting</duration></style></pitch>"
+                else if (rand < 9 * verbalBCProbBar.progress/9)
+                    text = "<pitch add=\"25\"><style set=\"confused\"><duration stretch=\"1.3\">Right</duration></style></pitch>"
                 else if (rand < 95)
                     text = ""
             }
             log("Jibo's Reply: $text")
             onCancelClick()
             mCommandLibrary?.say(text, this)
+            Thread.sleep(tempSleep.toLong())
             Thread.sleep(waitTime)
         }
         if (specialBCSwitch.isChecked) {
