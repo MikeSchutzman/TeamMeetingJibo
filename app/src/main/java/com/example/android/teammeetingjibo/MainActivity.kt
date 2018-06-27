@@ -7,7 +7,6 @@ import android.os.Bundle
 import android.util.Log
 import android.view.inputmethod.InputMethodManager
 import android.widget.Toast
-import java.util.ArrayList
 import com.jibo.apptoolkit.protocol.CommandLibrary
 import com.jibo.apptoolkit.protocol.OnConnectionListener
 import com.jibo.apptoolkit.protocol.model.EventMessage
@@ -24,6 +23,7 @@ import org.json.simple.JSONObject
 import org.json.simple.parser.*
 import java.io.*
 import java.net.SocketTimeoutException
+import java.util.*
 import java.util.regex.Pattern
 import java.util.regex.PatternSyntaxException
 
@@ -71,6 +71,7 @@ class MainActivity : AppCompatActivity(), OnConnectionListener, CommandLibrary.O
             loginButton?.isEnabled = false
             connectButton?.isEnabled = true
             logoutButton?.isEnabled = true
+
         }
 
         // If there's an authentication error
@@ -186,6 +187,7 @@ class MainActivity : AppCompatActivity(), OnConnectionListener, CommandLibrary.O
     fun ROSInteract() {
         val getInfo = DisplayText()
         getInfo.execute()
+        log("ROS Interact clicked")
     }
 
     /*
@@ -275,6 +277,17 @@ class MainActivity : AppCompatActivity(), OnConnectionListener, CommandLibrary.O
     }
 
     /* END OF ROS FUNCTIONS */
+    inner class BackgroundActivity : TimerTask() {
+        override fun run() {
+            if (mCommandLibrary != null) {
+                if (passiveButton.isChecked)
+                    esmlPassive()
+                if (passiveMoveButton.isChecked)
+                    passiveMovement()
+                log("Background task running")
+            }
+        }
+    }
 
     // function to check if a string contains any words from a list of words
     private fun checkFor(text: String, wordList: List<String>): Boolean {
@@ -478,10 +491,6 @@ class MainActivity : AppCompatActivity(), OnConnectionListener, CommandLibrary.O
             log("onListenClick was successfully called")
             if (listenButton.isChecked)
                 latestCommandID = mCommandLibrary?.listen(10L, 10L, "en", this)
-            if (passiveButton.isChecked)
-                esmlPassive()
-            if (passiveMoveButton.isChecked)
-                passiveMovement()
         }
     }
 
@@ -524,13 +533,13 @@ class MainActivity : AppCompatActivity(), OnConnectionListener, CommandLibrary.O
 
     fun passiveMovement(){
         var randPos = Math.random() * 100
-        if (randPos < 5)
+        if (randPos < 4)
             latestCommandID = onMoveClick(1)
-        else if (randPos < 10)
+        else if (randPos < 8)
             latestCommandID = onMoveClick(2)
-        else if (randPos < 15)
+        else if (randPos < 12)
             latestCommandID = onMoveClick(3)
-        else if (randPos < 20)
+        else if (randPos < 16)
             latestCommandID = onMoveClick(4)
     }
 
@@ -549,6 +558,10 @@ class MainActivity : AppCompatActivity(), OnConnectionListener, CommandLibrary.O
 
             // Log that we're connected to the app
             Toast.makeText(this@MainActivity, "Connected", Toast.LENGTH_SHORT).show()
+
+            // start running the background activity
+            val timer = Timer()
+            timer.schedule(BackgroundActivity(), 10000, 10000)
         }
     }
 
@@ -616,7 +629,7 @@ class MainActivity : AppCompatActivity(), OnConnectionListener, CommandLibrary.O
     override fun onListen(transactID: String, speech: String) {
         var proudList = listOf("happy", "cool", "fun", "great", "good", "amazing", "wonderful",
                 "fantastic", "yes", "nice", "congrats", "congratulations", "yay", "best", "thanks",
-                "hurray", "woohoo", "woo hoo", "excited", "exciting")
+                "hurray", "woohoo", "woo hoo", "excited", "exciting", "not bad", "wasn't bad")
         var laughList = listOf("funny", "hilarious", "haha", "ha ha", "laugh")
         var sadList = listOf("oh no", "yikes", "terrible", "awful", "horrible", "sad", "bad",
                 "embarrassing", "embarrassed", "not good", "worst", "worse", "sigh", "frustrated",
@@ -650,6 +663,7 @@ class MainActivity : AppCompatActivity(), OnConnectionListener, CommandLibrary.O
         }
         if (verbalBCSwitch.isChecked) {
             tempSleep = 3000
+            var canCancel = true
             if (checkFor(text, listOf("Jibo", "Tebow"))) {
                 text = "Hi! Did someone say Jibo? How can I help you?"
             } else if (text.toLowerCase().contains(" right ")) {
@@ -666,6 +680,7 @@ class MainActivity : AppCompatActivity(), OnConnectionListener, CommandLibrary.O
                 text = "<style set=\"enthusiastic\">That makes sense</style>"
             } else {
                 tempSleep = 0
+                canCancel = false
                 var rand = Math.random() * 100
                 if (rand < verbalBCProbBar.progress/9)
                     text = "<pitch add=\"25\"><style set=\"sheepish\"><duration stretch=\"1.2\">Yeah</duration></style></pitch>"
@@ -688,8 +703,10 @@ class MainActivity : AppCompatActivity(), OnConnectionListener, CommandLibrary.O
                 else if (rand < 95)
                     text = ""
             }
-            log("Jibo's Reply: $text")
-            onCancelClick()
+            if (canCancel) {
+                onCancelClick()
+                log("Jibo's Reply: $text")
+            }
             mCommandLibrary?.say(text, this)
             Thread.sleep(tempSleep.toLong())
             Thread.sleep(waitTime)
