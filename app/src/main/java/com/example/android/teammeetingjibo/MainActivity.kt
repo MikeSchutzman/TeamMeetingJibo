@@ -284,7 +284,6 @@ class MainActivity : AppCompatActivity(), OnConnectionListener, CommandLibrary.O
                     esmlPassive()
                 if (passiveMoveButton.isChecked)
                     passiveMovement()
-                log("Background task running")
             }
         }
     }
@@ -700,7 +699,7 @@ class MainActivity : AppCompatActivity(), OnConnectionListener, CommandLibrary.O
                     text = "<pitch add=\"25\"><style set=\"confused\"><duration stretch=\"1.3\">Interesting</duration></style></pitch>"
                 else if (rand < 9 * verbalBCProbBar.progress/9)
                     text = "<pitch add=\"25\"><style set=\"confused\"><duration stretch=\"1.3\">Right</duration></style></pitch>"
-                else if (rand < 95)
+                else if (rand < 99)
                     text = ""
             }
             if (canCancel) {
@@ -719,7 +718,6 @@ class MainActivity : AppCompatActivity(), OnConnectionListener, CommandLibrary.O
                 Thread.sleep(waitTime)
             }
         }
-        onListenClick()
     }
 
     override fun onParseError() {}
