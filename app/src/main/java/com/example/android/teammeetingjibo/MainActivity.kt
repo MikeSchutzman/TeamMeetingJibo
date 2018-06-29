@@ -276,7 +276,8 @@ class MainActivity : AppCompatActivity(), OnConnectionListener, CommandLibrary.O
                     val verbs = "These are the verbs <break size='0.5'/>" + obj!!["verbs"]
                     mCommandLibrary?.say("$speech <break size='0.5'/> $nouns <break size='0.5'/> $verbs", this@MainActivity)
                     Thread.sleep(7500)*/
-                    log("Confidence " + obj!!["confidence"].toString() + ":" + obj!!["transcript"].toString())
+                    var speechConf = String.format("%.2f", obj!!["confidence"].toString().toDouble())
+                    log("Confidence $speechConf:" + obj!!["transcript"].toString())
                     if (obj!!["confidence"].toString().toDouble() > 0.8)
                         onListen("Manual", obj!!["transcript"].toString())
                     else if (obj!!["transcript"] != "!")
@@ -289,7 +290,7 @@ class MainActivity : AppCompatActivity(), OnConnectionListener, CommandLibrary.O
 
     /* END OF ROS FUNCTIONS */
     inner class BackgroundActivity : TimerTask() {
-        private var timeUntilReset = 12
+        private var timeUntilReset = 15
 
         override fun run() {
             if (mCommandLibrary != null) {
@@ -301,7 +302,7 @@ class MainActivity : AppCompatActivity(), OnConnectionListener, CommandLibrary.O
                     if (passiveMoveButton.isChecked)
                         passiveMovement(50)
 
-                    // if it has been a silent period of 10 seconds, look at least active PID
+                    // if it has been a silent period of 30 seconds, look at least active PID
                     if (radioInactive.isChecked && timeUntilReset.rem(3) == 0) {
                         var lookAtPID = arrayListOf(1)
                         for (i in speechTimes.indices) {
@@ -317,9 +318,8 @@ class MainActivity : AppCompatActivity(), OnConnectionListener, CommandLibrary.O
                     }
 
                     if (specialBCSwitch.isChecked) {
-                        if (Math.random() * 100 < 10) {
-                            var text = "<style set=\"enthusiastic\">Time for a short break!</style>" +
-                                    "<anim cat='dance' filter='&music' endNeutral='true'/>"
+                        if (Math.random() * 100 < 2) {
+                            var text = "<style set=\"enthusiastic\">Time for a short break!</style><anim cat='dance' filter='&music' endNeutral='true'/>"
                             log("Special BC Activated")
                             say(text)
                             Thread.sleep(4000)
@@ -336,8 +336,9 @@ class MainActivity : AppCompatActivity(), OnConnectionListener, CommandLibrary.O
                     timeUntilReset -= 1
                 else {
                     speechTimes = arrayOf(0.0, 0.0, 0.0, 0.0)
-                    timeUntilReset = 12
-                    log("Speech times reset")
+                    timeUntilReset = 15
+                    log("Reset speech times from: " + speechTimes[0].toString() + speechTimes[1].toString() +
+                            speechTimes[2].toString() + speechTimes[3].toString())
                 }
             }
         }
