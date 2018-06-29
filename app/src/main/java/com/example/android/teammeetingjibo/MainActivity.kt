@@ -18,6 +18,7 @@ import kotlinx.android.synthetic.main.activity_main.*
 // imports necessary for Python side
 import android.widget.EditText
 import android.widget.TextView
+import com.example.android.teammeetingjibo.R.id.*
 import java.net.Socket
 import org.json.simple.JSONObject
 import org.json.simple.parser.*
@@ -38,6 +39,12 @@ class MainActivity : AppCompatActivity(), OnConnectionListener, CommandLibrary.O
     private var latestCommandID: String? = null
     // Duration Jibo waits after each behavior
     private var waitTime: Long = 0
+    // Time since last person spoke
+    private var lastSpeechTime: Long = 0
+    // Keeps track of how long each PID spoke for in the last X seconds (see Background task)
+    private var speechTimes: Array<Double> = arrayOf(0.0, 0.0, 0.0, 0.0)
+    // Keeps track of Jibo's orientation
+    private var jiboPosition: IntArray = intArrayOf(1, 1, 1)
     // Variables necessary for audio
     private var `in`: BufferedReader? = null
     private var out: PrintWriter? = null
@@ -253,10 +260,14 @@ class MainActivity : AppCompatActivity(), OnConnectionListener, CommandLibrary.O
                     } catch (e: Exception) {
                         e.printStackTrace()
                     }
-                    if (radioSpeaker.isChecked &&
+                    var pid = obj!!["pid"].toString().toInt()
+                    lastSpeechTime = System.currentTimeMillis()
+                    speechTimes[pid - 1] += obj!!["speech_duration"].toString().toDouble()
+
+                    if ((radioSpeaker.isChecked || radioInactive.isChecked) &&
                             ( obj!!["transcript"] == "!" ||
                                     obj!!["speech_duration"].toString().toDouble() > 2)){
-                        onMoveClick(obj!!["pid"].toString().toInt())
+                        onMoveClick(pid)
                         onListen("Manual", "!")
                     }
                     /*
@@ -265,7 +276,7 @@ class MainActivity : AppCompatActivity(), OnConnectionListener, CommandLibrary.O
                     val verbs = "These are the verbs <break size='0.5'/>" + obj!!["verbs"]
                     mCommandLibrary?.say("$speech <break size='0.5'/> $nouns <break size='0.5'/> $verbs", this@MainActivity)
                     Thread.sleep(7500)*/
-                    log("doInBackground: " + obj!!["transcript"].toString())
+                    log("Confidence " + obj!!["confidence"].toString() + ":" + obj!!["transcript"].toString())
                     if (obj!!["confidence"].toString().toDouble() > 0.8)
                         onListen("Manual", obj!!["transcript"].toString())
                     else if (obj!!["transcript"] != "!")
@@ -278,12 +289,56 @@ class MainActivity : AppCompatActivity(), OnConnectionListener, CommandLibrary.O
 
     /* END OF ROS FUNCTIONS */
     inner class BackgroundActivity : TimerTask() {
+        private var timeUntilReset = 12
+
         override fun run() {
             if (mCommandLibrary != null) {
-                if (passiveButton.isChecked)
-                    esmlPassive()
-                if (passiveMoveButton.isChecked)
-                    passiveMovement()
+                var silentPeriod = (System.currentTimeMillis() - lastSpeechTime > 10000)
+                if (silentPeriod){
+                    // passive behaviors are more active during a silent period
+                    if (passiveButton.isChecked)
+                        esmlPassive(50)
+                    if (passiveMoveButton.isChecked)
+                        passiveMovement(50)
+
+                    // if it has been a silent period of 10 seconds, look at least active PID
+                    if (radioInactive.isChecked && timeUntilReset.rem(3) == 0) {
+                        var lookAtPID = arrayListOf(1)
+                        for (i in speechTimes.indices) {
+                            if (speechTimes[i] < speechTimes[lookAtPID[0] - 1]) {
+                                lookAtPID.clear()
+                                lookAtPID.add(i + 1)
+                            } else if (speechTimes[i] == speechTimes[lookAtPID[0] - 1])
+                                lookAtPID.add(i + 1)
+                        }
+                        var chosenPID = lookAtPID[Math.floor(Math.random() * lookAtPID.size).toInt()]
+                        onMoveClick(chosenPID)
+                        log("Directing attention towards $chosenPID with speechtime " + speechTimes[chosenPID - 1])
+                    }
+
+                    if (specialBCSwitch.isChecked) {
+                        if (Math.random() * 100 < 10) {
+                            var text = "<style set=\"enthusiastic\">Time for a short break!</style>" +
+                                    "<anim cat='dance' filter='&music' endNeutral='true'/>"
+                            log("Special BC Activated")
+                            say(text)
+                            Thread.sleep(4000)
+                        }
+                    }
+                } else {
+                    if (passiveButton.isChecked)
+                        esmlPassive(25)
+                    if (passiveMoveButton.isChecked)
+                        passiveMovement(20)
+                }
+                // every timeUntilReset * 10 seconds, reset the speaking times
+                if (timeUntilReset > 0)
+                    timeUntilReset -= 1
+                else {
+                    speechTimes = arrayOf(0.0, 0.0, 0.0, 0.0)
+                    timeUntilReset = 12
+                    log("Speech times reset")
+                }
             }
         }
     }
@@ -386,7 +441,7 @@ class MainActivity : AppCompatActivity(), OnConnectionListener, CommandLibrary.O
         }
     }
 
-    fun esmlPassive() {
+    fun esmlPassive(prob: Int) {
         if (mCommandLibrary != null) {
             var rand = Math.random() * 100
             var text = "<anim cat='laughing' endNeutral='true' layers='body'/>"
@@ -400,7 +455,7 @@ class MainActivity : AppCompatActivity(), OnConnectionListener, CommandLibrary.O
                 text = "<anim cat='happy' endNeutral='true' layers='body'/>"
             else if (rand < 70)
                 text = "<anim cat='excited' endNeutral='true' layers='body'/>"
-            if (Math.random() * 100 < 25) {
+            if (Math.random() * 100 < prob) {
                 latestCommandID = mCommandLibrary?.say(text, this)
                 log("Passive movement: $text")
             }
@@ -408,7 +463,25 @@ class MainActivity : AppCompatActivity(), OnConnectionListener, CommandLibrary.O
         }
     }
 
+    fun esmlNod() {
+        if (mCommandLibrary != null){
+            repeat(2) {
+                if (jiboPosition[2] != 1) {
+                    onMoveClick(intArrayOf(jiboPosition[0], jiboPosition[1], 1))
+                    Thread.sleep((500 * Math.abs(jiboPosition[2] - 1).toLong()))
+                }
+                onMoveClick(intArrayOf(jiboPosition[0], jiboPosition[1], 0))
+                Thread.sleep(400)
+                onMoveClick(intArrayOf(jiboPosition[0], jiboPosition[1], 1))
+                Thread.sleep(1000)
+            }
+        }
+    }
 
+    fun say(text : String) {
+        if (mCommandLibrary != null)
+            mCommandLibrary?.say(text, this)
+    }
     // Interact Button
     fun onInteractClick() {
         if (mCommandLibrary != null) {
@@ -447,19 +520,6 @@ class MainActivity : AppCompatActivity(), OnConnectionListener, CommandLibrary.O
                 Thread.sleep(6000)
             }*/
             /*
-            var speakingStyle = arrayOf("neutral", "enthusiastic",
-                    "sheepish", "confused", "confident")
-            var backChannels = arrayOf("yeah", "yes", "uh huh",
-                    "right", "okay", "wow!")
-            for (style in speakingStyle) {
-                mCommandLibrary?.say("<style set=\"$style\"> The current speaking style is: $style </style>", this)
-                Thread.sleep(3000)
-                for (bc in backChannels) {
-                    var text = "<style set=\"$style\"> $bc </style>"
-                    mCommandLibrary?.say(text, this)
-                    Thread.sleep(1500)
-                }
-            }
 
             var texts = arrayOf("<pitch halftone=\"3\"> Halftone, 3</pitch> ",
                     "<pitch halftone=\"-3\"> Halftone, negative 3</pitch> ",
@@ -474,13 +534,15 @@ class MainActivity : AppCompatActivity(), OnConnectionListener, CommandLibrary.O
                 mCommandLibrary?.say(text, this)
                 Thread.sleep(3000)
             }*/
-
+            /*
             var text = "<style set=\"confused\"><duration stretch=\"1.2\"> Hey Jibo. <break size='1'/> How are you doing? </duration></style>"
             if (Math.random() * 10 < 5)
                 text = "<style set=\"enthusiastic\"><pitch band=\"1.5\"><duration stretch=\"1.2\"> Good morning! I hope you have a wonderful day! </duration></pitch></style>"
             else if (Math.random() * 10 < 5)
                 text = "<pitch halftone=\"2\"><duration stretch=\"1.2\"> Hi, my name is Jibo. I am a robot. </duration></pitch>"
             latestCommandID = mCommandLibrary?.say(text, this)
+            */
+            esmlNod()
         }
     }
 
@@ -494,11 +556,9 @@ class MainActivity : AppCompatActivity(), OnConnectionListener, CommandLibrary.O
     }
 
     // Move Button
-    fun onMoveClick(){
+    fun onMoveClick() : String? {
         if (mCommandLibrary != null) {
-            //var target = Command.LookAtRequest.PositionTarget(intArrayOf(10, 1, 1))
             //var target = Command.LookAtRequest.AngleTarget(intArrayOf(3, 1))
-            //mCommandLibrary?.lookAt(target, this)
             log("onMoveClick successfully called")
             var deltaX = 0
             var deltaY = 0
@@ -511,34 +571,43 @@ class MainActivity : AppCompatActivity(), OnConnectionListener, CommandLibrary.O
                 deltaZ = Integer.parseInt(positionTextZ.text.toString())
             //var target = Command.LookAtRequest.AngleTarget(intArrayOf(deltaX, deltaY))
             var target = Command.LookAtRequest.PositionTarget(intArrayOf(deltaX, deltaY, deltaZ))
-            mCommandLibrary?.lookAt(target, this)
-
-        }
-    }
-
-    fun onMoveClick(position: Int) : String? {
-        if (mCommandLibrary != null){
-            var target = Command.LookAtRequest.PositionTarget(intArrayOf(4, -1, 1))
-            if (position == 2)
-                target = Command.LookAtRequest.PositionTarget(intArrayOf(2, 2, 1))
-            else if (position == 3)
-                target = Command.LookAtRequest.PositionTarget(intArrayOf(1, 4, 1))
-            else if (position == 4)
-                target = Command.LookAtRequest.PositionTarget(intArrayOf(2, -2, 1))
+            jiboPosition = intArrayOf(deltaX, deltaY, deltaZ)
             return mCommandLibrary?.lookAt(target, this)
         }
         return null
     }
 
-    fun passiveMovement(){
+    fun onMoveClick(position: Int) : String? {
+        if (mCommandLibrary != null){
+            var target = intArrayOf(4, -1, 1)
+            if (position == 2)
+                target = intArrayOf(2, 2, 1)
+            else if (position == 3)
+                target = intArrayOf(1, 4, 1)
+            else if (position == 4)
+                target = intArrayOf(2, -2, 1)
+            jiboPosition = target
+            return mCommandLibrary?.lookAt(Command.LookAtRequest.PositionTarget(target), this)
+        }
+        return null
+    }
+
+    fun onMoveClick(position: IntArray) : String? {
+        if (mCommandLibrary != null){
+            return mCommandLibrary?.lookAt(Command.LookAtRequest.PositionTarget(position), this)
+        }
+        return null
+    }
+
+    fun passiveMovement(prob : Int){
         var randPos = Math.random() * 100
-        if (randPos < 4)
+        if (randPos < prob/4)
             latestCommandID = onMoveClick(1)
-        else if (randPos < 8)
+        else if (randPos < 2 * prob/4)
             latestCommandID = onMoveClick(2)
-        else if (randPos < 12)
+        else if (randPos < 3 * prob/4)
             latestCommandID = onMoveClick(3)
-        else if (randPos < 16)
+        else if (randPos < prob)
             latestCommandID = onMoveClick(4)
     }
 
@@ -626,16 +695,15 @@ class MainActivity : AppCompatActivity(), OnConnectionListener, CommandLibrary.O
     override fun onVideo(s: String, videoReadyEvent: EventMessage.VideoReadyEvent, inputStream: InputStream) {}
 
     override fun onListen(transactID: String, speech: String) {
-        var proudList = listOf("happy", "cool", "fun", "great", "good", "amazing", "wonderful",
+        var proudList = listOf("happy", "cool", "fun", "great", "amazing", "wonderful",
                 "fantastic", "yes", "nice", "congrats", "congratulations", "yay", "best", "thanks",
                 "hurray", "woohoo", "woo hoo", "excited", "exciting", "not bad", "wasn't bad")
         var laughList = listOf("funny", "hilarious", "haha", "ha ha", "laugh")
         var sadList = listOf("oh no", "yikes", "terrible", "awful", "horrible", "sad", "bad",
                 "embarrassing", "embarrassed", "not good", "worst", "worse", "sigh", "frustrated",
-                "frustrating")
+                "frustrating", "stupid", "dumb", "sucks", "shit")
         var questionList = listOf("confused", "don't know", "do not know", "dunno", "jibo", "tebow",
-                "question", "robot")
-        log("onListen: $speech")
+                "question", "robot", "not sure")
         var text = speech
         var tempSleep = 3000
         if (nonverbalBCSwitch.isChecked) {
@@ -655,6 +723,9 @@ class MainActivity : AppCompatActivity(), OnConnectionListener, CommandLibrary.O
                 onCancelClick()
                 esmlSad()
                 log("sad behavior activated")
+            } else if (Math.random() * 100 < 20) {
+                esmlNod()
+                log("nod behavior activated")
             } else {
                 tempSleep = 0
             }
@@ -709,14 +780,6 @@ class MainActivity : AppCompatActivity(), OnConnectionListener, CommandLibrary.O
             mCommandLibrary?.say(text, this)
             Thread.sleep(tempSleep.toLong())
             Thread.sleep(waitTime)
-        }
-        if (specialBCSwitch.isChecked) {
-            if (Math.random() * 100 < 2) {
-                text = "<style set=\"enthusiastic\">Time for a short break!</style>" +
-                        "<anim cat='dance' filter='&music' endNeutral='true'/>"
-                mCommandLibrary?.say(text, this)
-                Thread.sleep(waitTime)
-            }
         }
     }
 

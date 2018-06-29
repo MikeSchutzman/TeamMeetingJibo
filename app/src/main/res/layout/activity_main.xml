@@ -337,7 +337,7 @@
         android:layout_marginEnd="8dp"
         android:layout_marginStart="8dp"
         android:layout_marginTop="8dp"
-        android:checkedButton="@+id/radioSpeaker"
+        android:checkedButton="@+id/radioInactive"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/move2Button">
@@ -355,6 +355,13 @@
             android:layout_height="wrap_content"
             android:layout_weight="1"
             android:text="@string/speaker_focus" />
+
+        <RadioButton
+            android:id="@+id/radioInactive"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="Speaker + Inactive PID Focus" />
     </RadioGroup>
 
     <SeekBar
