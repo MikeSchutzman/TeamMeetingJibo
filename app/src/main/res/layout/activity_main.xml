@@ -25,8 +25,8 @@
         android:id="@+id/connectButton"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginStart="12dp"
-        android:layout_marginTop="16dp"
+        android:layout_marginStart="4dp"
+        android:layout_marginTop="24dp"
         android:text="@string/connect"
         app:layout_constraintStart_toEndOf="@+id/connectSwitch"
         app:layout_constraintTop_toBottomOf="@+id/loginButton" />
@@ -41,7 +41,7 @@
         android:layout_marginTop="8dp"
         android:text="@string/interact"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintHorizontal_bias="0.517"
+        app:layout_constraintHorizontal_bias="0.5"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/radioFocusGroup" />
 
@@ -59,7 +59,7 @@
         app:layout_constraintHorizontal_bias="0.0"
         app:layout_constraintStart_toEndOf="@+id/connectButton"
         app:layout_constraintTop_toBottomOf="@+id/logoutButton"
-        app:layout_constraintVertical_bias="0.0" />
+        app:layout_constraintVertical_bias="0.017" />
 
     <Button
         android:id="@+id/logoutButton"
@@ -82,14 +82,14 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginEnd="8dp"
-        android:layout_marginStart="100dp"
-        android:layout_marginTop="24dp"
+        android:layout_marginStart="64dp"
+        android:layout_marginTop="36dp"
         android:checked="false"
         android:showText="true"
         android:textOff="@string/_0"
         android:textOn="@string/_1"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintHorizontal_bias="0.099"
+        app:layout_constraintHorizontal_bias="0.0"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/loginButton"
         tools:checked="false" />
@@ -166,7 +166,7 @@
         android:id="@+id/nonverbalBCSwitch"
         android:layout_width="wrap_content"
         android:layout_height="29dp"
-        android:layout_marginStart="150dp"
+        android:layout_marginStart="164dp"
         android:layout_marginTop="40dp"
         android:text="@string/nonverbal_bc"
         app:layout_constraintStart_toStartOf="parent"
@@ -176,7 +176,7 @@
         android:id="@+id/verbalBCSwitch"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginStart="162dp"
+        android:layout_marginStart="175dp"
         android:layout_marginTop="24dp"
         android:text="@string/verbal_bc"
         app:layout_constraintStart_toStartOf="parent"
@@ -186,7 +186,7 @@
         android:id="@+id/specialBCSwitch"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginStart="162dp"
+        android:layout_marginStart="175dp"
         android:layout_marginTop="12dp"
         android:text="@string/special_bc"
         app:layout_constraintStart_toStartOf="parent"
@@ -305,7 +305,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginStart="8dp"
-        android:layout_marginTop="16dp"
+        android:layout_marginTop="24dp"
         android:text="@string/ros_connect"
         app:layout_constraintStart_toEndOf="@+id/disconnectButton"
         app:layout_constraintTop_toBottomOf="@+id/ipandportInput" />
@@ -315,10 +315,10 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginStart="8dp"
-        android:layout_marginTop="28dp"
+        android:layout_marginTop="24dp"
         android:text="@string/ros_interact"
-        app:layout_constraintStart_toEndOf="@+id/nonverbalBCSwitch"
-        app:layout_constraintTop_toBottomOf="@+id/connectToROSServerButton" />
+        app:layout_constraintStart_toEndOf="@+id/connectToROSServerButton"
+        app:layout_constraintTop_toBottomOf="@+id/ipandportInput" />
 
     <TextView
         android:id="@+id/connectionStatus"
@@ -328,7 +328,7 @@
         android:layout_marginTop="32dp"
         android:text="@string/not_connected"
         app:layout_constraintStart_toEndOf="@+id/ROSInteractButton"
-        app:layout_constraintTop_toBottomOf="@+id/connectToROSServerButton" />
+        app:layout_constraintTop_toBottomOf="@+id/ipandportInput" />
 
     <RadioGroup
         android:id="@+id/radioFocusGroup"
@@ -365,14 +365,25 @@
     </RadioGroup>
 
     <SeekBar
+        android:id="@+id/nonverbalBCProbBar"
+        android:layout_width="205dp"
+        android:layout_height="33dp"
+        android:layout_marginTop="30dp"
+        android:max="100"
+        android:progress="25"
+        app:layout_constraintStart_toEndOf="@+id/nonverbalBCSwitch"
+        app:layout_constraintTop_toBottomOf="@+id/connectToROSServerButton" />
+
+    <SeekBar
         android:id="@+id/verbalBCProbBar"
         android:layout_width="205dp"
         android:layout_height="33dp"
-        android:layout_marginTop="12dp"
+        android:layout_marginTop="16dp"
         android:max="100"
         android:progress="25"
         app:layout_constraintStart_toEndOf="@+id/verbalBCSwitch"
-        app:layout_constraintTop_toBottomOf="@+id/ROSInteractButton" />
+        app:layout_constraintTop_toBottomOf="@+id/nonverbalBCProbBar" />
+
 
 
 </android.support.constraint.ConstraintLayout>

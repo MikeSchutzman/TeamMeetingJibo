@@ -35,12 +35,11 @@ class MainActivity : AppCompatActivity(), OnConnectionListener, CommandLibrary.O
     private var mCommandLibrary: CommandLibrary? = null
     // List of robots associated with a user's account
     private var mRobots: ArrayList<Robot>? = null
-    // Used to be able to cancel the most recent behavior
+    // Used to be able to cancel certain recent behviors
     private var latestCommandID: String? = null
-    // Duration Jibo waits after each behavior
-    private var waitTime: Long = 0
-    // Time since last person spoke
+    // Time and ID of last speech
     private var lastSpeechTime: Long = 0
+    private var lastSpeechPID: Int = 0
     // Keeps track of how long each PID spoke for in the last X seconds (see Background task)
     private var speechTimes: Array<Double> = arrayOf(0.0, 0.0, 0.0, 0.0)
     // Keeps track of Jibo's orientation
@@ -78,19 +77,16 @@ class MainActivity : AppCompatActivity(), OnConnectionListener, CommandLibrary.O
             loginButton?.isEnabled = false
             connectButton?.isEnabled = true
             logoutButton?.isEnabled = true
-
         }
 
         // If there's an authentication error
         override fun onError(throwable: Throwable) {
-
             // Log the error to the app
             Toast.makeText(this@MainActivity, "API onError:" + throwable.localizedMessage, Toast.LENGTH_SHORT).show()
         }
 
         // If there's an authentication cancellation
         override fun onCancel() {
-
             // Log the cancellation to the app
             Toast.makeText(this@MainActivity, "Authentication canceled", Toast.LENGTH_SHORT).show()
         }
@@ -128,11 +124,52 @@ class MainActivity : AppCompatActivity(), OnConnectionListener, CommandLibrary.O
         logoutButton.isEnabled = false
         cancelButton.isEnabled = false
     }
-    // Our connectivity functions
 
+    /* USEFUL HELPER FUNCTIONS */
     // function for logging information
     private fun log(msg: String) {
         Log.d("TMJ", msg)
+    }
+
+    // function to check if a string contains any words from a list of words
+    private fun checkFor(text: String, wordList: List<String>): Boolean {
+        var lowertext = text.toLowerCase()
+        for (word in wordList) {
+            if (lowertext.contains(word.toLowerCase()))
+                return true
+        }
+        return false
+    }
+
+    // function returns the sum of the array of doubles
+    private fun getSum(array: Array<Double>) : Double {
+        var sum = 0.0
+        for (i in array.indices)
+            sum += array[i]
+        return sum
+    }
+
+    // function returns an index based on inverse proportionality in the array
+    // such that indices corresponding to smaller values are more likely to be returned
+    private fun getInversePropIndex(array: Array<Double>) : Int {
+        var sum = getSum(array)
+        var props = arrayOf(0.0, 0.0, 0.0, 0.0)
+        for (i in array.indices) {
+            if (array[i] <= 0.01)
+                props[i] = sum / 0.01
+            else
+                props[i] = sum / array[i]
+        }
+        var rand = Math.random() * getSum(props)
+        var curInd = 0
+        var curSum = props[curInd]
+        while (curSum < rand){
+            curInd += 1
+            curSum += props[curInd]
+        }
+        log("Speech times: " + array[0] + " " + array[1] + " " + array[2] + " " + array[3])
+        log("Chosen PID" + (curInd + 1) + " " + props[0] + " " + props[1] + " " + props[2] + " " + props[3])
+        return curInd
     }
 
     /* BELOW ARE FUNCTIONS NECESSARY FOR ROS IMPLEMENTATION */
@@ -261,27 +298,40 @@ class MainActivity : AppCompatActivity(), OnConnectionListener, CommandLibrary.O
                         e.printStackTrace()
                     }
                     var pid = obj!!["pid"].toString().toInt()
-                    lastSpeechTime = System.currentTimeMillis()
+                    // update speech time of the heard PID
                     speechTimes[pid - 1] += obj!!["speech_duration"].toString().toDouble()
 
+                    // look at the participant who just spoke for over x seconds if speaker/inactive focus
                     if ((radioSpeaker.isChecked || radioInactive.isChecked) &&
                             ( obj!!["transcript"] == "!" ||
                                     obj!!["speech_duration"].toString().toDouble() > 2)){
                         onMoveClick(pid)
-                        onListen("Manual", "!")
+                        // onListen("Manual", "!")
                     }
-                    /*
-                    val speech = "Participant " + obj!!["pid"] + "said <break size='0.5'/>" + obj!!["transcript"]
-                    val nouns = "These are the nouns <break size='0.5'/>" + obj!!["nouns"]
-                    val verbs = "These are the verbs <break size='0.5'/>" + obj!!["verbs"]
-                    mCommandLibrary?.say("$speech <break size='0.5'/> $nouns <break size='0.5'/> $verbs", this@MainActivity)
-                    Thread.sleep(7500)*/
+
+                    // send the speech to be processed for backchannelling
                     var speechConf = String.format("%.2f", obj!!["confidence"].toString().toDouble())
-                    log("Confidence $speechConf:" + obj!!["transcript"].toString())
+                    log("Confidence $speechConf: " + obj!!["transcript"].toString())
                     if (obj!!["confidence"].toString().toDouble() > 0.8)
                         onListen("Manual", obj!!["transcript"].toString())
                     else if (obj!!["transcript"] != "!")
                         onListen("Manual", "")
+
+                    // if one person has been dominating the speech and is the last person who spoke
+                    // then glance away with a certain probability to an inactive PID
+                    if (lastSpeechPID == pid && getSum(speechTimes) > 30 &&
+                            speechTimes[pid - 1]/getSum(speechTimes) > 0.75){
+                        var inactivePID = getInversePropIndex(speechTimes) + 1
+                        if (inactivePID != lastSpeechPID && Math.random() * 100 < 25) {
+                            log("Glancing away at $inactivePID")
+                            var returnPos = jiboPosition
+                            onMoveClick(inactivePID)
+                            Thread.sleep(3000)
+                            onMoveClick(returnPos)
+                        }
+                    }
+                    lastSpeechPID = pid
+                    lastSpeechTime = System.currentTimeMillis()
                 }
             }
             return null
@@ -290,20 +340,23 @@ class MainActivity : AppCompatActivity(), OnConnectionListener, CommandLibrary.O
 
     /* END OF ROS FUNCTIONS */
     inner class BackgroundActivity : TimerTask() {
-        private var timeUntilReset = 15
+        private var timeUntilReset = 12
+        private var numSilencePeriods = 0
 
         override fun run() {
             if (mCommandLibrary != null) {
-                var silentPeriod = (System.currentTimeMillis() - lastSpeechTime > 10000)
+                var silentPeriod = (System.currentTimeMillis() - lastSpeechTime > 12000)
                 if (silentPeriod){
+                    numSilencePeriods += 1
                     // passive behaviors are more active during a silent period
                     if (passiveButton.isChecked)
                         esmlPassive(50)
                     if (passiveMoveButton.isChecked)
                         passiveMovement(50)
 
-                    // if it has been a silent period of 30 seconds, look at least active PID
-                    if (radioInactive.isChecked && timeUntilReset.rem(3) == 0) {
+                    // if it has been a silent period of 12 seconds, look at least active PID
+                    if (radioInactive.isChecked && numSilencePeriods > 0) {
+                        /*
                         var lookAtPID = arrayListOf(1)
                         for (i in speechTimes.indices) {
                             if (speechTimes[i] < speechTimes[lookAtPID[0] - 1]) {
@@ -315,6 +368,10 @@ class MainActivity : AppCompatActivity(), OnConnectionListener, CommandLibrary.O
                         var chosenPID = lookAtPID[Math.floor(Math.random() * lookAtPID.size).toInt()]
                         onMoveClick(chosenPID)
                         log("Directing attention towards $chosenPID with speechtime " + speechTimes[chosenPID - 1])
+                        */
+                        var inactivePID = getInversePropIndex(speechTimes) + 1
+                        onMoveClick(inactivePID)
+                        log("Directing attention towards: $inactivePID with speechtime " + speechTimes[inactivePID - 1])
                     }
 
                     if (specialBCSwitch.isChecked) {
@@ -326,32 +383,22 @@ class MainActivity : AppCompatActivity(), OnConnectionListener, CommandLibrary.O
                         }
                     }
                 } else {
+                    numSilencePeriods = 0
                     if (passiveButton.isChecked)
-                        esmlPassive(25)
+                        esmlPassive(24)
                     if (passiveMoveButton.isChecked)
-                        passiveMovement(20)
+                        passiveMovement(16)
                 }
                 // every timeUntilReset * 10 seconds, reset the speaking times
                 if (timeUntilReset > 0)
                     timeUntilReset -= 1
                 else {
+                    log("Reset speech times from")
                     speechTimes = arrayOf(0.0, 0.0, 0.0, 0.0)
-                    timeUntilReset = 15
-                    log("Reset speech times from: " + speechTimes[0].toString() + speechTimes[1].toString() +
-                            speechTimes[2].toString() + speechTimes[3].toString())
+                    timeUntilReset = 12
                 }
             }
         }
-    }
-
-    // function to check if a string contains any words from a list of words
-    private fun checkFor(text: String, wordList: List<String>): Boolean {
-        var lowertext = text.toLowerCase()
-        for (word in wordList) {
-            if (lowertext.contains(word.toLowerCase()))
-                return true
-        }
-        return false
     }
 
     // Log In
@@ -403,7 +450,7 @@ class MainActivity : AppCompatActivity(), OnConnectionListener, CommandLibrary.O
         Toast.makeText(this@MainActivity, "Logged Out", Toast.LENGTH_SHORT).show()
     }
 
-    // Cancels the latest (passive) action
+    // Cancels the latest cancelable action
     fun onCancelClick() {
         if (mCommandLibrary != null && latestCommandID != null) {
             latestCommandID = mCommandLibrary?.cancel(latestCommandID, this)
@@ -414,7 +461,6 @@ class MainActivity : AppCompatActivity(), OnConnectionListener, CommandLibrary.O
         if (mCommandLibrary != null) {
             var text = "<anim cat='happy' nonBlocking='true' endNeutral='true'/><ssa cat='proud'/>"
             mCommandLibrary?.say(text, this)
-            Thread.sleep(waitTime)
         }
     }
 
@@ -422,7 +468,6 @@ class MainActivity : AppCompatActivity(), OnConnectionListener, CommandLibrary.O
         if (mCommandLibrary != null) {
             var text = "<anim cat='laughing' nonBlocking='true' endNeutral='true'/><ssa cat='laughing'/>"
             mCommandLibrary?.say(text, this)
-            Thread.sleep(waitTime)
         }
     }
 
@@ -430,7 +475,6 @@ class MainActivity : AppCompatActivity(), OnConnectionListener, CommandLibrary.O
         if (mCommandLibrary != null) {
             var text = "<anim cat='confused' nonBlocking='true' endNeutral='true'/><ssa cat='oops'/>"
             mCommandLibrary?.say(text, this)
-            Thread.sleep(waitTime)
         }
     }
 
@@ -438,7 +482,6 @@ class MainActivity : AppCompatActivity(), OnConnectionListener, CommandLibrary.O
         if (mCommandLibrary != null) {
             var text = "<anim cat='sad' nonBlocking='true' endNeutral='true'/><ssa cat='sad'/>"
             mCommandLibrary?.say(text, this)
-            Thread.sleep(waitTime)
         }
     }
 
@@ -460,7 +503,6 @@ class MainActivity : AppCompatActivity(), OnConnectionListener, CommandLibrary.O
                 latestCommandID = mCommandLibrary?.say(text, this)
                 log("Passive movement: $text")
             }
-            Thread.sleep(waitTime)
         }
     }
 
@@ -483,6 +525,7 @@ class MainActivity : AppCompatActivity(), OnConnectionListener, CommandLibrary.O
         if (mCommandLibrary != null)
             mCommandLibrary?.say(text, this)
     }
+
     // Interact Button
     fun onInteractClick() {
         if (mCommandLibrary != null) {
@@ -556,10 +599,9 @@ class MainActivity : AppCompatActivity(), OnConnectionListener, CommandLibrary.O
         }
     }
 
-    // Move Button
+    // Move Button (3 functions for 3 different input types)
     fun onMoveClick() : String? {
         if (mCommandLibrary != null) {
-            //var target = Command.LookAtRequest.AngleTarget(intArrayOf(3, 1))
             log("onMoveClick successfully called")
             var deltaX = 0
             var deltaY = 0
@@ -595,6 +637,7 @@ class MainActivity : AppCompatActivity(), OnConnectionListener, CommandLibrary.O
 
     fun onMoveClick(position: IntArray) : String? {
         if (mCommandLibrary != null){
+            jiboPosition = position
             return mCommandLibrary?.lookAt(Command.LookAtRequest.PositionTarget(position), this)
         }
         return null
@@ -724,7 +767,7 @@ class MainActivity : AppCompatActivity(), OnConnectionListener, CommandLibrary.O
                 onCancelClick()
                 esmlSad()
                 log("sad behavior activated")
-            } else if (Math.random() * 100 < 20) {
+            } else if (Math.random() * 100 < nonverbalBCProbBar.progress) {
                 esmlNod()
                 log("nod behavior activated")
             } else {
@@ -760,7 +803,7 @@ class MainActivity : AppCompatActivity(), OnConnectionListener, CommandLibrary.O
                 else if (rand < 3 * verbalBCProbBar.progress/9)
                     text = "<pitch add=\"25\"><style set=\"enthusiastic\"><duration stretch=\"0.75\">Uh huh!</duration></style></pitch>"
                 else if (rand < 4 * verbalBCProbBar.progress/9)
-                    text = "<pitch add=\"10\"><style set=\"enthusiastic\"><duration stretch=\"1.5\"><phoneme ph='hum m m mm'>Hmm?</phoneme></duration></style></pitch>"
+                    text = "<pitch add=\"25\"><style set=\"enthusiastic\"><duration stretch=\"1.5\"><phoneme ph='h m'>Hmm?</phoneme></duration></style></pitch>"
                 else if (rand < 5 * verbalBCProbBar.progress/9)
                     text = "<style set=\"enthusiastic\"><duration stretch=\"1.3\">I see</duration></style>"
                 else if (rand < 6 * verbalBCProbBar.progress/9)
@@ -780,7 +823,6 @@ class MainActivity : AppCompatActivity(), OnConnectionListener, CommandLibrary.O
             }
             mCommandLibrary?.say(text, this)
             Thread.sleep(tempSleep.toLong())
-            Thread.sleep(waitTime)
         }
     }
 
