@@ -27,6 +27,7 @@ import java.net.SocketTimeoutException
 import java.util.*
 import java.util.regex.Pattern
 import java.util.regex.PatternSyntaxException
+import kotlin.math.roundToInt
 
 
 class MainActivity : AppCompatActivity(), OnConnectionListener, CommandLibrary.OnCommandResponseListener {
@@ -153,6 +154,8 @@ class MainActivity : AppCompatActivity(), OnConnectionListener, CommandLibrary.O
     // such that indices corresponding to smaller values are more likely to be returned
     private fun getInversePropIndex(array: Array<Double>) : Int {
         var sum = getSum(array)
+        if (sum == 0.0)
+            return (Math.floor(Math.random() * 4)).toInt()
         var props = arrayOf(0.0, 0.0, 0.0, 0.0)
         for (i in array.indices) {
             if (array[i] <= 0.01)
@@ -303,8 +306,8 @@ class MainActivity : AppCompatActivity(), OnConnectionListener, CommandLibrary.O
 
                     // look at the participant who just spoke for over x seconds if speaker/inactive focus
                     if ((radioSpeaker.isChecked || radioInactive.isChecked) &&
-                            ( obj!!["transcript"] == "!" ||
-                                    obj!!["speech_duration"].toString().toDouble() > 2)){
+                            ( obj!!["transcript"] == "!" )){
+                        //  obj!!["speech_duration"].toString().toDouble() > 2)
                         onMoveClick(pid)
                         // onListen("Manual", "!")
                     }
