@@ -525,6 +525,74 @@ class MainActivity : AppCompatActivity(), OnConnectionListener, CommandLibrary.O
         }
     }
 
+    fun getLongResponse(speech: String) {   //returns one of Jibo's long responses if applicable
+        var text = "$speech"
+        var responses = arrayOf("")
+        var restOfSentence = ""
+        if (text.toLowerCase().indexOf("i think") == 0) {
+            restOfSentence = text.toLowerCase().substring(7)
+            responses = arrayOf("Yeah", "Good idea", "Yup", "I agree")
+        } else if (text.toLowerCase().indexOf("i feel like") == 0) {
+            restOfSentence = text.toLowerCase().substring(11)
+            responses = arrayOf("Yup", "Oh, I see,", "Exactly,")
+        } else if (text.toLowerCase().indexOf("i'm pretty sure") == 0 || text.toLowerCase().indexOf("i am pretty sure") == 0) {
+            restOfSentence = text.toLowerCase().substring(15)
+            responses = arrayOf("Yeah", "Maybe", "It makes sense that", "uh huh ")
+        } else if (text.toLowerCase().indexOf("who") == 0) {
+            restOfSentence = text.toLowerCase().substring(3)
+            responses = arrayOf("I know who", "<pitch add=\"10\"><style set=\"neutral\"><duration stretch=\"1.5\"><phoneme ph='uh m'>Um</phoneme></duration></style></pitch> who  ", "I'm not sure who", "I wonder who")
+        } else if (text.toLowerCase().indexOf("i wonder if") == 0) {
+            restOfSentence = text.toLowerCase().substring(11)
+            responses = arrayOf("Hmm it'd be interesting if", "It's worth considering if", "I think")
+        } else if (text.toLowerCase().indexOf("let's") == 0) {
+            restOfSentence = text.toLowerCase().substring(5)
+            responses = arrayOf("Yeah let's", "It'll be great if we", "Yes, we should", "Do you all agree that we should", "Why do you want us to")
+        } else if (text.toLowerCase().indexOf("i don't think") == 0) {
+            restOfSentence = text.toLowerCase().substring(13)
+            responses = arrayOf("Maybe", "I'd be impressed if")
+        } else if (text.toLowerCase().indexOf("we can") == 0) {
+            restOfSentence = text.toLowerCase().substring(6)
+            responses = arrayOf("Yes we can", "Yup let's", "I don't think we should", "Today's a perfect day to")
+        } else if (text.toLowerCase().contains("right?")) {
+            responses = arrayOf("Yup", "Exactly", "Yeah", "Uh huh", "Okay", "Agreed")
+            var rndm = (Math.random()*responses.size+3).toInt()
+            if (rndm >= responses.size)
+            {
+                esmlNod()
+            }
+        }
+        else if (text.contains("?")){
+            responses = arrayOf("hmm i'm not sure", "I don't know", "<pitch add=\"10\"><style set=\"neutral\"><duration stretch=\"1.5\"><phoneme ph='uh m'>Um</phoneme></duration></style></pitch> interesting question")
+        }
+        if (text.toLowerCase().contains("start a conversation"))
+            text=getConversationStarter()
+        else {
+            var num = (Math.random() * responses.size).toInt()
+            text = responses[num] + restOfSentence
+            text=text.toLowerCase().replace(" ha ", "")
+            text=text.toLowerCase().replace(" haha ", "")
+            text=text.toLowerCase().replace("i've ", " you've ")
+            text=text.toLowerCase().replace("i have ", " you have ")
+            text=text.toLowerCase().replace("i'd ", " you'd ")
+            text=text.toLowerCase().replace("i would ", " you would ")
+            text=text.toLowerCase().replace("i'll ", " you'll ")
+            text=text.toLowerCase().replace("i will ", " you will ")
+            text=text.toLowerCase().replace("i'm ", " you're ")
+            text=text.toLowerCase().replace("i am ", " you are ")
+            text=text.toLowerCase().replace("i ", " you ")
+        }
+        say(text)
+    }
+
+    fun getConversationStarter(): String
+    {
+        var array = arrayOf("Do you guys have any pets? I'm thinking about adopting a robot dog.","Do you guys have any plans for the weekend?", "What is the strangest dream you have ever had? Last night I had a nightmare about robots taking over the world!"
+                , "Do you guys have a favorite movie? Personally, I like The Matrix.", "Any of you follow sports? I can't wait for the Yale Versus Harvard football game on November 17th"
+                , "Just curious, why'd you guys sign up for this experiment?", "I've been listening to some really catchy songs lately. What type of music are you guys into?"
+                , "Are you guys originally from around here? I've lived at Yale my whole life.", "Do you guys have any travel plans for the rest of the summer?", "You guys have any siblings? I'm actually one of ten here at Yale.", "What do you guys think the meaning of life is?")
+        return (array[(Math.random()*array.size).toInt()])  //random element from the array
+    }
+
     fun say(text : String) {
         if (mCommandLibrary != null)
             mCommandLibrary?.say(text, this)
@@ -828,6 +896,10 @@ class MainActivity : AppCompatActivity(), OnConnectionListener, CommandLibrary.O
             }
             mCommandLibrary?.say(text, this)
             Thread.sleep(tempSleep.toLong())
+        }
+        if (longResponseSwitch.isChecked) {
+            if (longResponseProbBar.progress > (Math.random()*101).toInt())
+                getLongResponse(speech)
         }
     }
 
