@@ -27,7 +27,6 @@ import java.net.SocketTimeoutException
 import java.util.*
 import java.util.regex.Pattern
 import java.util.regex.PatternSyntaxException
-import kotlin.math.roundToInt
 
 
 class MainActivity : AppCompatActivity(), OnConnectionListener, CommandLibrary.OnCommandResponseListener {
@@ -348,8 +347,10 @@ class MainActivity : AppCompatActivity(), OnConnectionListener, CommandLibrary.O
 
         override fun run() {
             if (mCommandLibrary != null) {
-                var silentPeriod = (System.currentTimeMillis() - lastSpeechTime > 12000)
+                var silentPeriod = (System.currentTimeMillis() - lastSpeechTime > 15000)
                 if (silentPeriod){
+                    log("Silent period detected from last speech time $lastSpeechTime, " +
+                            "current time is " + System.currentTimeMillis())
                     numSilencePeriods += 1
                     // passive behaviors are more active during a silent period
                     if (passiveButton.isChecked)
@@ -357,8 +358,8 @@ class MainActivity : AppCompatActivity(), OnConnectionListener, CommandLibrary.O
                     if (passiveMoveButton.isChecked)
                         passiveMovement(50)
 
-                    // if it has been a silent period of 12 seconds, look at least active PID
-                    if (radioInactive.isChecked && numSilencePeriods > 0) {
+                    // if it has been a silent period of 15 seconds, look at least active PID
+                    if (radioInactive.isChecked && numSilencePeriods > 1) {
                         /*
                         var lookAtPID = arrayListOf(1)
                         for (i in speechTimes.indices) {
@@ -378,7 +379,7 @@ class MainActivity : AppCompatActivity(), OnConnectionListener, CommandLibrary.O
                     }
 
                     if (specialBCSwitch.isChecked) {
-                        if (Math.random() * 100 < 2) {
+                        if (Math.random() * 400 < 2) {
                             var text = "<style set=\"enthusiastic\">Time for a short break!</style><anim cat='dance' filter='&music' endNeutral='true'/>"
                             log("Special BC Activated")
                             say(text)
@@ -732,7 +733,7 @@ class MainActivity : AppCompatActivity(), OnConnectionListener, CommandLibrary.O
     override fun onEvent(s: String, baseEvent: EventMessage.BaseEvent) {
         //log("String: $s, BaseEvent: $baseEvent")
         log("Event detected: " + baseEvent.event.name)
-        if (baseEvent.toString().contains("StopEvent")) {
+        if (baseEvent.toString().contains("StopEvent") && listenButton.isChecked) {
             onListenClick()
         }
     }
@@ -750,7 +751,7 @@ class MainActivity : AppCompatActivity(), OnConnectionListener, CommandLibrary.O
                 "embarrassing", "embarrassed", "not good", "worst", "worse", "sigh", "frustrated",
                 "frustrating", "stupid", "dumb", "sucks", "shit")
         var questionList = listOf("confused", "don't know", "do not know", "dunno", "jibo", "tebow",
-                "question", "robot", "not sure")
+                "question", "robot", "not sure", "wonder if")
         var text = speech
         var tempSleep = 3000
         if (nonverbalBCSwitch.isChecked) {
@@ -791,10 +792,11 @@ class MainActivity : AppCompatActivity(), OnConnectionListener, CommandLibrary.O
                 text = "<style set=\"enthusiastic\">Hi! How are you?</style>"
             } else if (text.toLowerCase().contains("hear me")) {
                 text = "<style set=\"enthusiastic\">Yeah, I'm listening!</style>"
-            } else if (checkFor(text, listOf("i think", "what if", "what about", "how about"))){
-                text = "<style set=\"enthusiastic\">That's worth considering</style>"
-            } else if (text.toLowerCase().contains("make sense")) {
+            } else if (checkFor(text, listOf("i think", "what if", "what about", "how about",
+                            "make sense", "i feel like", "pretty sure"))){
                 text = "<style set=\"enthusiastic\">That makes sense</style>"
+                if (Math.random() * 2 < 1)
+                    text = "<style set=\"enthusiastic\">That's worth considering</style>"
             } else {
                 tempSleep = 0
                 canCancel = false
