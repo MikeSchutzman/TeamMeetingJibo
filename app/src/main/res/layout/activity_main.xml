@@ -183,6 +183,16 @@
         app:layout_constraintTop_toBottomOf="@+id/nonverbalBCSwitch" />
 
     <Switch
+        android:id="@+id/longResponseSwitch"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="175dp"
+        android:layout_marginTop="24dp"
+        android:text="@string/long_response"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/verbalBCSwitch"/>
+
+    <Switch
         android:id="@+id/specialBCSwitch"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
@@ -190,7 +200,7 @@
         android:layout_marginTop="12dp"
         android:text="@string/special_bc"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/verbalBCSwitch" />
+        app:layout_constraintTop_toBottomOf="@+id/longResponseSwitch" />
 
     <ToggleButton
         android:id="@+id/passiveButton"
@@ -384,6 +394,15 @@
         app:layout_constraintStart_toEndOf="@+id/verbalBCSwitch"
         app:layout_constraintTop_toBottomOf="@+id/nonverbalBCProbBar" />
 
+    <SeekBar
+        android:id="@+id/longResponseProbBar"
+        android:layout_width="205dp"
+        android:layout_height="33dp"
+        android:layout_marginTop="16dp"
+        android:max="100"
+        android:progress="25"
+        app:layout_constraintStart_toEndOf="@+id/longResponseSwitch"
+        app:layout_constraintTop_toBottomOf="@+id/verbalBCProbBar"/>
 
 
 </android.support.constraint.ConstraintLayout>
