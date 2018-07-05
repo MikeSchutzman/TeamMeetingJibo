@@ -53,6 +53,9 @@ class MainActivity : AppCompatActivity(), OnConnectionListener, CommandLibrary.O
     private var connection: TextView? = null
     private var socket: Socket? = null
     private var obj: JSONObject? = null
+    // Variables for logging purposes
+    private val cal = Calendar.getInstance()
+    private var file: File? = null
 
     // Authentication
     private val onAuthenticationListener = object : JiboRemoteControl.OnAuthenticationListener {
@@ -123,12 +126,48 @@ class MainActivity : AppCompatActivity(), OnConnectionListener, CommandLibrary.O
         disconnectButton.isEnabled = false
         logoutButton.isEnabled = false
         cancelButton.isEnabled = false
+
+        try {
+            val date = (cal.get(Calendar.YEAR).toString() + "_" +
+                    (cal.get(Calendar.MONTH) + 1).toString() + "_" +
+                    cal.get(Calendar.DAY_OF_MONTH).toString() + "_" +
+                    cal.get(Calendar.HOUR_OF_DAY).toString() + "_" +
+                    cal.get(Calendar.MINUTE) + "_" +
+                    cal.get(Calendar.SECOND))
+            val name = String.format("transcript_$date.txt")
+            Log.d("Date", name)
+            val path = getExternalFilesDir(null)
+            Log.d("path", "$path")
+            val dir = File(path, "Transcripts")
+            Log.d("dur", "$dir")
+            dir.mkdirs()
+            file = File(dir, name)
+            file?.appendText("The following is a conversation transcript.\n\n\n\n")
+        } catch(e: Exception) {
+            Log.d("File creation", "Caught exception")
+            e.printStackTrace()
+        }
     }
 
     /* USEFUL HELPER FUNCTIONS */
     // function for logging information
     private fun log(msg: String) {
-        Log.d("TMJ", msg)
+        log(msg, -1)
+    }
+    // id -1 for misc logs, 0 for jibo actions, and PID otherwise
+    private fun log(msg: String, id: Int) {
+        Log.d("TMJ $id", msg)
+        cal.timeInMillis = System.currentTimeMillis()
+        var transcript = cal.get(Calendar.HOUR_OF_DAY).toString() + ":" +
+                cal.get(Calendar.MINUTE).toString() + ":" +
+                cal.get(Calendar.SECOND).toString() + "    "
+        if (id != -1 && msg != "!"){
+            if (id == 0)
+                transcript += "JIBO: $msg\n\n"
+            else
+                transcript += "PID$id: $msg\n\n"
+            file?.appendText(transcript)
+        }
     }
 
     // function to check if a string contains any words from a list of words
@@ -139,6 +178,17 @@ class MainActivity : AppCompatActivity(), OnConnectionListener, CommandLibrary.O
                 return true
         }
         return false
+    }
+
+    // function returns a random item from an array of strings
+    // with an optional input to indicate how often to return an item (vs. an empty string)
+    private fun getRandom(list: Array<String>): String {
+        return list[(Math.random() * list.size).toInt()]
+    }
+    private fun getRandom(list: Array<String>, prob: Int): String {
+        if (Math.random() * 100 < prob)
+            return list[(Math.random() * list.size).toInt()]
+        return ""
     }
 
     // function returns the sum of the array of doubles
@@ -304,33 +354,37 @@ class MainActivity : AppCompatActivity(), OnConnectionListener, CommandLibrary.O
                     speechTimes[pid - 1] += obj!!["speech_duration"].toString().toDouble()
 
                     // look at the participant who just spoke for over x seconds if speaker/inactive focus
-                    if ((radioSpeaker.isChecked || radioInactive.isChecked) &&
-                            ( obj!!["transcript"] == "!" )){
-                        //  obj!!["speech_duration"].toString().toDouble() > 2)
+                    if ((radioSpeaker.isChecked || radioInactive.isChecked) && obj!!["transcript"] == "!" )
                         onMoveClick(pid)
-                        // onListen("Manual", "!")
-                    }
 
                     // send the speech to be processed for backchannelling
                     var speechConf = String.format("%.2f", obj!!["confidence"].toString().toDouble())
-                    log("Confidence $speechConf: " + obj!!["transcript"].toString())
-                    if (obj!!["confidence"].toString().toDouble() > 0.8)
-                        onListen("Manual", obj!!["transcript"].toString())
-                    else if (obj!!["transcript"] != "!")
+                    var inactivePID = getInversePropIndex(speechTimes) + 1
+                    log("Conf. $speechConf: " + obj!!["transcript"].toString(), pid)
+
+                    if (obj!!["confidence"].toString().toDouble() > 0.8) {
+                        // with a certain probability dependent on member participation
+                        // produce a long response based on the participant's speech
+                        // if they spoke for a certain amount of time
+                        if (pid == inactivePID &&
+                                obj!!["speech_duration"].toString().toDouble() > 2 &&
+                                Math.random() * 100 < verbalBCProbBar.progress/5)
+                            onListen("Manual_Long", obj!!["transcript"].toString())
+                        else
+                            onListen("Manual", obj!!["transcript"].toString())
+                    } else if (obj!!["transcript"] != "!")
                         onListen("Manual", "")
 
                     // if one person has been dominating the speech and is the last person who spoke
                     // then glance away with a certain probability to an inactive PID
-                    if (lastSpeechPID == pid && getSum(speechTimes) > 30 &&
+                    if (lastSpeechPID == pid && lastSpeechPID != inactivePID &&
+                            getSum(speechTimes) > 30 && Math.random() * 100 < 25 &&
                             speechTimes[pid - 1]/getSum(speechTimes) > 0.75){
-                        var inactivePID = getInversePropIndex(speechTimes) + 1
-                        if (inactivePID != lastSpeechPID && Math.random() * 100 < 25) {
-                            log("Glancing away at $inactivePID")
-                            var returnPos = jiboPosition
-                            onMoveClick(inactivePID)
-                            Thread.sleep(3000)
-                            onMoveClick(returnPos)
-                        }
+                        log("Glancing away at $inactivePID", 0)
+                        var returnPos = jiboPosition
+                        onMoveClick(inactivePID)
+                        Thread.sleep(3000)
+                        onMoveClick(returnPos)
                     }
                     lastSpeechPID = pid
                     lastSpeechTime = System.currentTimeMillis()
@@ -354,50 +408,53 @@ class MainActivity : AppCompatActivity(), OnConnectionListener, CommandLibrary.O
                     numSilencePeriods += 1
                     // passive behaviors are more active during a silent period
                     if (passiveButton.isChecked)
-                        esmlPassive(50)
+                        esmlPassive((nonverbalBCProbBar.progress * 1.5).toInt())
                     if (passiveMoveButton.isChecked)
-                        passiveMovement(50)
+                        passiveMovement(nonverbalBCProbBar.progress)
 
                     // if it has been a silent period of 15 seconds, look at least active PID
                     if (radioInactive.isChecked && numSilencePeriods > 1) {
-                        /*
-                        var lookAtPID = arrayListOf(1)
-                        for (i in speechTimes.indices) {
-                            if (speechTimes[i] < speechTimes[lookAtPID[0] - 1]) {
-                                lookAtPID.clear()
-                                lookAtPID.add(i + 1)
-                            } else if (speechTimes[i] == speechTimes[lookAtPID[0] - 1])
-                                lookAtPID.add(i + 1)
-                        }
-                        var chosenPID = lookAtPID[Math.floor(Math.random() * lookAtPID.size).toInt()]
-                        onMoveClick(chosenPID)
-                        log("Directing attention towards $chosenPID with speechtime " + speechTimes[chosenPID - 1])
-                        */
                         var inactivePID = getInversePropIndex(speechTimes) + 1
                         onMoveClick(inactivePID)
-                        log("Directing attention towards: $inactivePID with speechtime " + speechTimes[inactivePID - 1])
+                        log("Directing attention towards: $inactivePID with speechtime " + speechTimes[inactivePID - 1], 0)
                     }
 
                     if (specialBCSwitch.isChecked) {
-                        if (Math.random() * 400 < 2) {
+                        var rand = Math.random() * 1000
+                        if (rand < 2) {
                             var text = "<style set=\"enthusiastic\">Time for a short break!</style><anim cat='dance' filter='&music' endNeutral='true'/>"
-                            log("Special BC Activated")
+                            log("Special BC - break - Activated", 0)
                             say(text)
                             Thread.sleep(4000)
+                        } else if (rand < 4) {
+                            val convStarters = arrayOf("Do you guys have any pets? I'm thinking about adopting a robot dog.",
+                                    "Do you guys have any plans for the weekend?",
+                                    "What is the strangest dream you have ever had? Last night I had a nightmare about robots taking over the world!",
+                                    "Do you guys have a favorite movie? Personally, I like The Matrix.",
+                                    "Any of you follow sports? I can't wait for the Yale Versus Harvard football game on November 17th",
+                                    "Just curious, why'd you guys sign up for this experiment?",
+                                    "I've been listening to some really catchy songs lately. What type of music are you guys into?",
+                                    "Are you guys originally from around here? I've lived at Yale my whole life.",
+                                    "Do you guys have any travel plans for the rest of the summer?", "You guys have any siblings? I'm actually one of ten here at Yale.",
+                                    "What do you guys think the meaning of life is?")
+                            log("Special BC - conversation starter - Activated", 0)
+                            say(getRandom(convStarters))
+                            Thread.sleep(3000)
                         }
                     }
                 } else {
                     numSilencePeriods = 0
                     if (passiveButton.isChecked)
-                        esmlPassive(24)
+                        esmlPassive(nonverbalBCProbBar.progress)
                     if (passiveMoveButton.isChecked)
-                        passiveMovement(16)
+                        passiveMovement((nonverbalBCProbBar.progress * 0.5).toInt())
                 }
                 // every timeUntilReset * 10 seconds, reset the speaking times
                 if (timeUntilReset > 0)
                     timeUntilReset -= 1
                 else {
-                    log("Reset speech times from")
+                    log("Reset speech times from " + speechTimes[0] + " " + speechTimes[1] + " " +
+                            speechTimes[2] + " " + speechTimes[3])
                     speechTimes = arrayOf(0.0, 0.0, 0.0, 0.0)
                     timeUntilReset = 12
                 }
@@ -505,7 +562,7 @@ class MainActivity : AppCompatActivity(), OnConnectionListener, CommandLibrary.O
                 text = "<anim cat='excited' endNeutral='true' layers='body'/>"
             if (Math.random() * 100 < prob) {
                 latestCommandID = mCommandLibrary?.say(text, this)
-                log("Passive movement: $text")
+                log("Passive movement: $text", 0)
             }
         }
     }
@@ -747,56 +804,102 @@ class MainActivity : AppCompatActivity(), OnConnectionListener, CommandLibrary.O
                 "fantastic", "yes", "nice", "congrats", "congratulations", "yay", "best", "thanks",
                 "hurray", "woohoo", "woo hoo", "excited", "exciting", "not bad", "wasn't bad")
         var laughList = listOf("funny", "hilarious", "haha", "ha ha", "laugh")
-        var sadList = listOf("oh no", "yikes", "terrible", "awful", "horrible", "sad", "bad",
+        var sadList = listOf("oh no", "yikes", "terrible", "awful", "horrible", " sad ", " bad ",
                 "embarrassing", "embarrassed", "not good", "worst", "worse", "sigh", "frustrated",
                 "frustrating", "stupid", "dumb", "sucks", "shit")
         var questionList = listOf("confused", "don't know", "do not know", "dunno", "jibo", "tebow",
-                "question", "robot", "not sure", "wonder if")
-        var text = speech
-        var tempSleep = 3000
+                "question", "robot", "not sure", "wonder if", "?")
+        var text = "$speech"
+        var responses = arrayOf("")
+        var tempSleep = 0
         if (nonverbalBCSwitch.isChecked) {
             if (checkFor(text, proudList)) {
                 onCancelClick()
                 esmlProud()
-                log("proud behavior activated")
+                log("proud behavior activated", 0)
             } else if (checkFor(text, laughList)) {
                 onCancelClick()
                 esmlLaugh()
-                log("laugh behavior activated")
+                log("laugh behavior activated", 0)
             } else if (checkFor(text, questionList)) {
                 onCancelClick()
                 esmlQuestion()
-                log("question behavior activated")
+                log("question behavior activated", 0)
             } else if (checkFor(text, sadList)) {
                 onCancelClick()
                 esmlSad()
-                log("sad behavior activated")
+                log("sad behavior activated", 0)
             } else if (Math.random() * 100 < nonverbalBCProbBar.progress) {
                 esmlNod()
-                log("nod behavior activated")
-            } else {
-                tempSleep = 0
+                tempSleep = 3000
+                log("nod behavior activated", 0)
             }
             Thread.sleep(tempSleep.toLong())
         }
-        if (verbalBCSwitch.isChecked) {
+        if (transactID == "Manual_Long"){
+            log("Long response activated", 0)
+            var restOfSentence = ""
+            responses = arrayOf("that's worth considering", "good idea", "I see", "that makes sense",
+                    "that's reasonable", "uh huh", "<phoneme ph='h m'>Hmm</phoneme>",
+                    "<phoneme ph='h m'>Hmm</phoneme> maybe", "interesting", "okay", "yeah",
+                    "that's interesting", "what do we think about that?", "thoughts?",
+                    "let's think about that")
+            if (checkFor(text, listOf("i think that")))
+                restOfSentence = text.substring(text.toLowerCase().indexOf("i think") + 12)
+            else if (checkFor(text, listOf("i think")))
+                restOfSentence = text.substring(text.toLowerCase().indexOf("i think") + 7)
+            else if (checkFor(text, listOf("i feel like")))
+                restOfSentence = text.substring(text.toLowerCase().indexOf("i feel like") + 11)
+            else if (checkFor(text, listOf("i'm pretty sure")))
+                restOfSentence = text.substring(text.toLowerCase().indexOf("i'm pretty sure") + 15)
+            else if (checkFor(text, listOf("i wonder if")))
+                restOfSentence = text.substring(text.toLowerCase().indexOf("i wonder if") + 11)
+            else if (checkFor(text, listOf("let's")))
+                restOfSentence = text.substring(text.toLowerCase().indexOf("let's") + 5)
+            else if (checkFor(text, listOf("we can")))
+                restOfSentence = text.substring(text.toLowerCase().indexOf("we can") + 6)
+            else if (checkFor(text, listOf("i don't think"))) {
+                restOfSentence = "you don't think" + text.substring(text.toLowerCase().indexOf("i don't think") + 13)
+            }
+            var substitutions = listOf("ha", "", "haha", "", "hahaha", "",
+                    "i've", "you've", "i have", "you have", "i'd", "you'd", "i'll", "you'll",
+                    "i'm", "you're", "i am", "you are", "i", "you")
+            var subIndex = 0
+            while (subIndex < substitutions.size){
+                var replacedStr = " " + substitutions[subIndex] + " "
+                var replaceStr = " " + substitutions[subIndex + 1] + " "
+                restOfSentence = restOfSentence.toLowerCase().replace(replacedStr, replaceStr)
+                subIndex += 2
+            }
+            say(restOfSentence + " " + getRandom(responses, 90))
+            Thread.sleep(4000)
+        }
+        else if (verbalBCSwitch.isChecked) {
             tempSleep = 3000
             var canCancel = true
             if (checkFor(text, listOf("Jibo", "Tebow"))) {
                 text = "Hi! Did someone say Jibo? How can I help you?"
-            } else if (text.toLowerCase().contains(" right ")) {
-                text = "<style set=\"enthusiastic\">Right!</style>"
-            } else if (text.toLowerCase().contains("hello")) {
-                text = "<style set=\"enthusiastic\">Hello to you too!</style>"
-            } else if (text.toLowerCase().contains(" hi ")) {
-                text = "<style set=\"enthusiastic\">Hi! How are you?</style>"
-            } else if (text.toLowerCase().contains("hear me")) {
+            } else if (text.toLowerCase().contains(" right?")) {
+                responses = arrayOf("right!", "yup", "exactly", "agreed")
+                text = "<style set=\"enthusiastic\">" + getRandom(responses) + "</style>"
+            } else if (checkFor(text, listOf("hello", " hi "))) {
+                responses = arrayOf("Hi! How are you?", "hello", "How do you do?", "hey!",
+                        "hey there", "hi", "nice to meet you!")
+                text = "<style set=\"enthusiastic\">" + getRandom(responses) + "</style>"
+            } else if (text.toLowerCase().contains("you hear me")) {
                 text = "<style set=\"enthusiastic\">Yeah, I'm listening!</style>"
+            } else if (text.toLowerCase().contains("let's")){
+                responses = arrayOf("Let's think about that", "Do we all agree?",
+                        "What does everyone think about that?",
+                        "Does anyone have thoughts on that?", "<phoneme ph='h m'>Hmm</phoneme>")
+                text = "<style set=\"enthusiastic\">" + getRandom(responses, verbalBCProbBar.progress) + "</style>"
             } else if (checkFor(text, listOf("i think", "what if", "what about", "how about",
                             "make sense", "i feel like", "pretty sure"))){
-                text = "<style set=\"enthusiastic\">That makes sense</style>"
-                if (Math.random() * 2 < 1)
-                    text = "<style set=\"enthusiastic\">That's worth considering</style>"
+                responses = arrayOf("That makes sense", "That's worth considering", "Good idea!")
+                text = "<style set=\"enthusiastic\">" + getRandom(responses, verbalBCProbBar.progress) + "</style>"
+            } else if (checkFor(text, listOf("?", "wonder if", "not sure"))) {
+                responses = arrayOf("That's something to think about", "<phoneme ph='h m'>Hmm</phoneme>")
+                text = "<style set=\"enthusiastic\">" + getRandom(responses, verbalBCProbBar.progress) + "</style>"
             } else {
                 tempSleep = 0
                 canCancel = false
@@ -819,12 +922,12 @@ class MainActivity : AppCompatActivity(), OnConnectionListener, CommandLibrary.O
                     text = "<pitch add=\"25\"><style set=\"confused\"><duration stretch=\"1.3\">Interesting</duration></style></pitch>"
                 else if (rand < 9 * verbalBCProbBar.progress/9)
                     text = "<pitch add=\"25\"><style set=\"confused\"><duration stretch=\"1.3\">Right</duration></style></pitch>"
-                else if (rand < 99)
+                else
                     text = ""
             }
             if (canCancel) {
                 onCancelClick()
-                log("Jibo's Reply: $text")
+                log("Jibo's Reply: $text", 0)
             }
             mCommandLibrary?.say(text, this)
             Thread.sleep(tempSleep.toLong())
