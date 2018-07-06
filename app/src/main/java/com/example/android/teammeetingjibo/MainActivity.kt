@@ -38,8 +38,9 @@ class MainActivity : AppCompatActivity(), OnConnectionListener, CommandLibrary.O
     // Used to be able to cancel certain recent behviors
     private var latestCommandID: String? = null
     // Time and ID of last speech
-    private var lastSpeechTime: Long = 0
+    private var lastSpeechTimes: Array<Long> = arrayOf(0, 0, 0, 0)
     private var lastSpeechPID: Int = 0
+    private var lastJiboSpeech: Long = 0 // Make sure Jibo doesn't talk too much at once
     // Keeps track of how long each PID spoke for in the last X seconds (see Background task)
     private var speechTimes: Array<Double> = arrayOf(0.0, 0.0, 0.0, 0.0)
     // Keeps track of Jibo's orientation
@@ -198,6 +199,24 @@ class MainActivity : AppCompatActivity(), OnConnectionListener, CommandLibrary.O
             sum += array[i]
         return sum
     }
+    // function returns the index of the maximum of an array
+    private fun getMax(array: Array<Long>) : Int {
+        var maxInd = 0
+        for (i in array.indices){
+            if (array[i] > array[maxInd])
+                maxInd = i
+        }
+        return maxInd
+    }
+    // function returns the number of array items greater than a certain number
+    private fun numGreaterThan(array: Array<Long>, number: Long) : Int {
+        var num = 0
+        for (i in array.indices){
+            if (array[i] > number)
+                num += 1
+        }
+        return num
+    }
 
     // function returns an index based on inverse proportionality in the array
     // such that indices corresponding to smaller values are more likely to be returned
@@ -284,6 +303,7 @@ class MainActivity : AppCompatActivity(), OnConnectionListener, CommandLibrary.O
         val getInfo = DisplayText()
         getInfo.execute()
         log("ROS Interact clicked")
+        Toast.makeText(this@MainActivity, "ROS Interact clicked", Toast.LENGTH_SHORT).show()
     }
 
     /*
@@ -362,13 +382,18 @@ class MainActivity : AppCompatActivity(), OnConnectionListener, CommandLibrary.O
                     var inactivePID = getInversePropIndex(speechTimes) + 1
                     log("Conf. $speechConf: " + obj!!["transcript"].toString(), pid)
 
-                    if (obj!!["confidence"].toString().toDouble() > 0.8) {
+                    if (numGreaterThan(lastSpeechTimes, System.currentTimeMillis() - 4000) > 2) {
+                        say(getRandom(arrayOf("Hey guys. Can we slow down a little?",
+                                "Sorry, I'm having a hard time keeping up. Everyone's talking so fast",
+                                "One at a time please! I'm getting a little confused.")))
+                    } else if (obj!!["confidence"].toString().toDouble() > 0.8) {
                         // with a certain probability dependent on member participation
                         // produce a long response based on the participant's speech
                         // if they spoke for a certain amount of time
-                        if (pid == inactivePID &&
-                                obj!!["speech_duration"].toString().toDouble() > 2 &&
-                                Math.random() * 100 < verbalBCProbBar.progress/5)
+                        if (Math.random() * 100 < verbalBCProbBar.progress/2 &&
+                                (pid == inactivePID || checkFor(obj!!["transcript"].toString(),
+                                                listOf("i think", "i feel like", "i'm pretty sure", "i wonder if", "let's", "we can", "i don't think")))
+                                        && obj!!["speech_duration"].toString().toDouble() > 2)
                             onListen("Manual_Long", obj!!["transcript"].toString())
                         else
                             onListen("Manual", obj!!["transcript"].toString())
@@ -387,7 +412,7 @@ class MainActivity : AppCompatActivity(), OnConnectionListener, CommandLibrary.O
                         onMoveClick(returnPos)
                     }
                     lastSpeechPID = pid
-                    lastSpeechTime = System.currentTimeMillis()
+                    lastSpeechTimes[pid - 1] = System.currentTimeMillis()
                 }
             }
             return null
@@ -401,6 +426,7 @@ class MainActivity : AppCompatActivity(), OnConnectionListener, CommandLibrary.O
 
         override fun run() {
             if (mCommandLibrary != null) {
+                val lastSpeechTime = lastSpeechTimes[getMax(lastSpeechTimes)]
                 var silentPeriod = (System.currentTimeMillis() - lastSpeechTime > 15000)
                 if (silentPeriod){
                     log("Silent period detected from last speech time $lastSpeechTime, " +
@@ -423,7 +449,6 @@ class MainActivity : AppCompatActivity(), OnConnectionListener, CommandLibrary.O
                         var rand = Math.random() * 1000
                         if (rand < 2) {
                             var text = "<style set=\"enthusiastic\">Time for a short break!</style><anim cat='dance' filter='&music' endNeutral='true'/>"
-                            log("Special BC - break - Activated", 0)
                             say(text)
                             Thread.sleep(4000)
                         } else if (rand < 4) {
@@ -437,9 +462,7 @@ class MainActivity : AppCompatActivity(), OnConnectionListener, CommandLibrary.O
                                     "Are you guys originally from around here? I've lived at Yale my whole life.",
                                     "Do you guys have any travel plans for the rest of the summer?", "You guys have any siblings? I'm actually one of ten here at Yale.",
                                     "What do you guys think the meaning of life is?")
-                            log("Special BC - conversation starter - Activated", 0)
                             say(getRandom(convStarters))
-                            Thread.sleep(3000)
                         }
                     }
                 } else {
@@ -582,77 +605,12 @@ class MainActivity : AppCompatActivity(), OnConnectionListener, CommandLibrary.O
         }
     }
 
-    fun getLongResponse(speech: String) {   //returns one of Jibo's long responses if applicable
-        var text = "$speech"
-        var responses = arrayOf("")
-        var restOfSentence = ""
-        if (text.toLowerCase().indexOf("i think") == 0) {
-            restOfSentence = text.toLowerCase().substring(7)
-            responses = arrayOf("Yeah", "Good idea", "Yup", "I agree")
-        } else if (text.toLowerCase().indexOf("i feel like") == 0) {
-            restOfSentence = text.toLowerCase().substring(11)
-            responses = arrayOf("Yup", "Oh, I see,", "Exactly,")
-        } else if (text.toLowerCase().indexOf("i'm pretty sure") == 0 || text.toLowerCase().indexOf("i am pretty sure") == 0) {
-            restOfSentence = text.toLowerCase().substring(15)
-            responses = arrayOf("Yeah", "Maybe", "It makes sense that", "uh huh ")
-        } else if (text.toLowerCase().indexOf("who") == 0) {
-            restOfSentence = text.toLowerCase().substring(3)
-            responses = arrayOf("I know who", "<pitch add=\"10\"><style set=\"neutral\"><duration stretch=\"1.5\"><phoneme ph='uh m'>Um</phoneme></duration></style></pitch> who  ", "I'm not sure who", "I wonder who")
-        } else if (text.toLowerCase().indexOf("i wonder if") == 0) {
-            restOfSentence = text.toLowerCase().substring(11)
-            responses = arrayOf("Hmm it'd be interesting if", "It's worth considering if", "I think")
-        } else if (text.toLowerCase().indexOf("let's") == 0) {
-            restOfSentence = text.toLowerCase().substring(5)
-            responses = arrayOf("Yeah let's", "It'll be great if we", "Yes, we should", "Do you all agree that we should", "Why do you want us to")
-        } else if (text.toLowerCase().indexOf("i don't think") == 0) {
-            restOfSentence = text.toLowerCase().substring(13)
-            responses = arrayOf("Maybe", "I'd be impressed if")
-        } else if (text.toLowerCase().indexOf("we can") == 0) {
-            restOfSentence = text.toLowerCase().substring(6)
-            responses = arrayOf("Yes we can", "Yup let's", "I don't think we should", "Today's a perfect day to")
-        } else if (text.toLowerCase().contains("right?")) {
-            responses = arrayOf("Yup", "Exactly", "Yeah", "Uh huh", "Okay", "Agreed")
-            var rndm = (Math.random()*responses.size+3).toInt()
-            if (rndm >= responses.size)
-            {
-                esmlNod()
-            }
-        }
-        else if (text.contains("?")){
-            responses = arrayOf("hmm i'm not sure", "I don't know", "<pitch add=\"10\"><style set=\"neutral\"><duration stretch=\"1.5\"><phoneme ph='uh m'>Um</phoneme></duration></style></pitch> interesting question")
-        }
-        if (text.toLowerCase().contains("start a conversation"))
-            text=getConversationStarter()
-        else {
-            var num = (Math.random() * responses.size).toInt()
-            text = responses[num] + restOfSentence
-            text=text.toLowerCase().replace(" ha ", "")
-            text=text.toLowerCase().replace(" haha ", "")
-            text=text.toLowerCase().replace("i've ", " you've ")
-            text=text.toLowerCase().replace("i have ", " you have ")
-            text=text.toLowerCase().replace("i'd ", " you'd ")
-            text=text.toLowerCase().replace("i would ", " you would ")
-            text=text.toLowerCase().replace("i'll ", " you'll ")
-            text=text.toLowerCase().replace("i will ", " you will ")
-            text=text.toLowerCase().replace("i'm ", " you're ")
-            text=text.toLowerCase().replace("i am ", " you are ")
-            text=text.toLowerCase().replace("i ", " you ")
-        }
-        say(text)
-    }
-
-    fun getConversationStarter(): String
-    {
-        var array = arrayOf("Do you guys have any pets? I'm thinking about adopting a robot dog.","Do you guys have any plans for the weekend?", "What is the strangest dream you have ever had? Last night I had a nightmare about robots taking over the world!"
-                , "Do you guys have a favorite movie? Personally, I like The Matrix.", "Any of you follow sports? I can't wait for the Yale Versus Harvard football game on November 17th"
-                , "Just curious, why'd you guys sign up for this experiment?", "I've been listening to some really catchy songs lately. What type of music are you guys into?"
-                , "Are you guys originally from around here? I've lived at Yale my whole life.", "Do you guys have any travel plans for the rest of the summer?", "You guys have any siblings? I'm actually one of ten here at Yale.", "What do you guys think the meaning of life is?")
-        return (array[(Math.random()*array.size).toInt()])  //random element from the array
-    }
-
     fun say(text : String) {
-        if (mCommandLibrary != null)
+        if (mCommandLibrary != null && System.currentTimeMillis() - lastJiboSpeech > 3000) {
+            log(text, 0)
+            lastJiboSpeech = System.currentTimeMillis()
             mCommandLibrary?.say(text, this)
+        }
     }
 
     // Interact Button
@@ -904,8 +862,8 @@ class MainActivity : AppCompatActivity(), OnConnectionListener, CommandLibrary.O
             }
             Thread.sleep(tempSleep.toLong())
         }
-        if (transactID == "Manual_Long"){
-            log("Long response activated", 0)
+        if (verbalBCSwitch.isChecked && transactID == "Manual_Long"){
+            log("long response activated", -1)
             var restOfSentence = ""
             responses = arrayOf("that's worth considering", "good idea", "I see", "that makes sense",
                     "that's reasonable", "uh huh", "<phoneme ph='h m'>Hmm</phoneme>",
@@ -929,20 +887,19 @@ class MainActivity : AppCompatActivity(), OnConnectionListener, CommandLibrary.O
             else if (checkFor(text, listOf("i don't think"))) {
                 restOfSentence = "you don't think" + text.substring(text.toLowerCase().indexOf("i don't think") + 13)
             }
-            var substitutions = listOf("ha", "", "haha", "", "hahaha", "",
-                    "i've", "you've", "i have", "you have", "i'd", "you'd", "i'll", "you'll",
-                    "i'm", "you're", "i am", "you are", "i", "you")
+            var substitutions = listOf(" ha ", " ", "hahaha", " ", "haha", " ",
+                    "i've", "you've", " i have", " you have", "i'd", "you'd", "i'll", "you'll",
+                    "i'm", "you're", " i am", " you are", " i ", " you ")
             var subIndex = 0
+            restOfSentence = restOfSentence.toLowerCase()
             while (subIndex < substitutions.size){
-                var replacedStr = " " + substitutions[subIndex] + " "
-                var replaceStr = " " + substitutions[subIndex + 1] + " "
-                restOfSentence = restOfSentence.toLowerCase().replace(replacedStr, replaceStr)
+                var replacedStr = substitutions[subIndex]
+                var replaceStr = substitutions[subIndex + 1]
+                restOfSentence = restOfSentence.replace(replacedStr, replaceStr)
                 subIndex += 2
             }
             say(restOfSentence + " " + getRandom(responses, 90))
-            Thread.sleep(4000)
-        }
-        else if (verbalBCSwitch.isChecked) {
+        } else if (verbalBCSwitch.isChecked) {
             tempSleep = 3000
             var canCancel = true
             if (checkFor(text, listOf("Jibo", "Tebow"))) {
@@ -993,16 +950,10 @@ class MainActivity : AppCompatActivity(), OnConnectionListener, CommandLibrary.O
                 else
                     text = ""
             }
-            if (canCancel) {
+            if (canCancel)
                 onCancelClick()
-                log("Jibo's Reply: $text", 0)
-            }
-            mCommandLibrary?.say(text, this)
+            say(text)
             Thread.sleep(tempSleep.toLong())
-        }
-        if (longResponseSwitch.isChecked) {
-            if (longResponseProbBar.progress > (Math.random()*101).toInt())
-                getLongResponse(speech)
         }
     }
 
