@@ -162,8 +162,10 @@ class MainActivity : AppCompatActivity(), OnConnectionListener, CommandLibrary.O
         var transcript = cal.get(Calendar.HOUR_OF_DAY).toString() + ":" +
                 cal.get(Calendar.MINUTE).toString() + ":" +
                 cal.get(Calendar.SECOND).toString() + "    "
-        if (id != -1 && msg != "!"){
-            if (id == 0)
+        if (msg != "!"){
+            if (id == -1)
+                transcript += "$msg\n"
+            else if (id == 0)
                 transcript += "JIBO: $msg\n\n"
             else
                 transcript += "PID$id: $msg\n\n"
@@ -382,7 +384,7 @@ class MainActivity : AppCompatActivity(), OnConnectionListener, CommandLibrary.O
                     var inactivePID = getInversePropIndex(speechTimes) + 1
                     log("Conf. $speechConf: " + obj!!["transcript"].toString(), pid)
 
-                    if (numGreaterThan(lastSpeechTimes, System.currentTimeMillis() - 4000) > 2) {
+                    if (numGreaterThan(lastSpeechTimes, System.currentTimeMillis() - 2500) > 2) {
                         say(getRandom(arrayOf("Hey guys. Can we slow down a little?",
                                 "Sorry, I'm having a hard time keeping up. Everyone's talking so fast",
                                 "One at a time please! I'm getting a little confused.")))

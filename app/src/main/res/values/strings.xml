@@ -23,7 +23,7 @@
     <string name="p3">P3</string>
     <string name="p4">P4</string>
     <string name="ip_port">IP Port</string>
-    <string name="default_ip">192.168.2.114:9090</string>
+    <string name="default_ip">192.168.2.115:9090</string>
     <string name="ros_connect">ROS Connect</string>
     <string name="ros_interact">ROS Interact</string>
     <string name="not_connected">Not Connected</string>
