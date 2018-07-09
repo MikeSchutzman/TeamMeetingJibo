@@ -356,7 +356,6 @@ class MainActivity : AppCompatActivity(), OnConnectionListener, CommandLibrary.O
     inner class DisplayText : AsyncTask<String, Void, Void>() {
 
         override fun doInBackground(vararg message: String): Void? {
-
             // keeps listening for messages
             // to fix: doesn't wait for the say function to finish before reading and executing the
             // next piece of transcript - ends up cutting himself off
@@ -374,6 +373,9 @@ class MainActivity : AppCompatActivity(), OnConnectionListener, CommandLibrary.O
                     var pid = obj!!["pid"].toString().toInt()
                     // update speech time of the heard PID
                     speechTimes[pid - 1] += obj!!["speech_duration"].toString().toDouble()
+                    lastSpeechPID = pid
+                    if (obj!!["speech_duration"].toString().toDouble() > 1.5)
+                        lastSpeechTimes[pid - 1] = System.currentTimeMillis()
 
                     // look at the participant who just spoke for over x seconds if speaker/inactive focus
                     if ((radioSpeaker.isChecked || radioInactive.isChecked) && obj!!["transcript"] == "!" )
@@ -397,15 +399,26 @@ class MainActivity : AppCompatActivity(), OnConnectionListener, CommandLibrary.O
                                                 listOf("i think", "i feel like", "i'm pretty sure", "i wonder if", "let's", "we can", "i don't think")))
                                         && obj!!["speech_duration"].toString().toDouble() > 2)
                             onListen("Manual_Long", obj!!["transcript"].toString())
-                        else
+                        // otherwise, if control condition or participant speaks lower than 25% of
+                        // the time, process speech for backchanneling; lower probability if
+                        // experimental condition and participant is an active speaker
+                        else if (!experimentSwitch.isChecked
+                                || speechTimes[pid - 1]/getSum(speechTimes) < 0.25)
                             onListen("Manual", obj!!["transcript"].toString())
-                    } else if (obj!!["transcript"] != "!")
-                        onListen("Manual", "")
+                        else if (Math.random() * 100 < verbalBCProbBar.progress * 3)
+                            onListen("Manual", obj!!["transcript"].toString())
+                    } else if (obj!!["transcript"] != "!"){
+                        if (!experimentSwitch.isChecked || speechTimes[pid - 1]/getSum(speechTimes) < 0.25)
+                            onListen("Manual", "")
+                        else if (Math.random() * 100 < verbalBCProbBar.progress * 3)
+                            onListen("Manual", "")
+                    }
+
 
                     // if one person has been dominating the speech and is the last person who spoke
                     // then glance away with a certain probability to an inactive PID
-                    if (lastSpeechPID == pid && lastSpeechPID != inactivePID &&
-                            getSum(speechTimes) > 30 && Math.random() * 100 < 25 &&
+                    if (radioInactive.isChecked && lastSpeechPID == pid && lastSpeechPID != inactivePID
+                            && getSum(speechTimes) > 30 && Math.random() * 100 < 25 &&
                             speechTimes[pid - 1]/getSum(speechTimes) > 0.75){
                         log("Glancing away at $inactivePID", 0)
                         var returnPos = jiboPosition
@@ -413,8 +426,6 @@ class MainActivity : AppCompatActivity(), OnConnectionListener, CommandLibrary.O
                         Thread.sleep(3000)
                         onMoveClick(returnPos)
                     }
-                    lastSpeechPID = pid
-                    lastSpeechTimes[pid - 1] = System.currentTimeMillis()
                 }
             }
             return null
@@ -900,7 +911,7 @@ class MainActivity : AppCompatActivity(), OnConnectionListener, CommandLibrary.O
                 restOfSentence = restOfSentence.replace(replacedStr, replaceStr)
                 subIndex += 2
             }
-            say(restOfSentence + " " + getRandom(responses, 90))
+            say(restOfSentence + " " + getRandom(responses))
         } else if (verbalBCSwitch.isChecked) {
             tempSleep = 3000
             var canCancel = true
@@ -944,7 +955,7 @@ class MainActivity : AppCompatActivity(), OnConnectionListener, CommandLibrary.O
                 else if (rand < 6 * verbalBCProbBar.progress/9)
                     text = "<pitch add=\"25\"><style set=\"sheepish\"><duration stretch=\"1.7\">Wow</duration></style></pitch>"
                 else if (rand < 7 * verbalBCProbBar.progress/9)
-                    text = "<pitch add=\"25\"><style set=\"sheepish\"><duration stretch=\"1.2\">Okay</duration></style></pitch>"
+                    text = "<pitch add=\"25\"><style set=\"sheepish\"><duration stretch=\"1.3\">Okay</duration></style></pitch>"
                 else if (rand < 8 * verbalBCProbBar.progress/9)
                     text = "<pitch add=\"25\"><style set=\"confused\"><duration stretch=\"1.3\">Interesting</duration></style></pitch>"
                 else if (rand < 9 * verbalBCProbBar.progress/9)

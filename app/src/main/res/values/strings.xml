@@ -30,4 +30,6 @@
     <string name="random_focus">Random Focus</string>
     <string name="speaker_focus">Speaker Focus</string>
     <string name="passive_movement">Passive Movement</string>
+    <string name="inactiveFocus">Speaker + Inactive PID Focus</string>
+    <string name="experimental_condition">Experimental Condition</string>
 </resources>
