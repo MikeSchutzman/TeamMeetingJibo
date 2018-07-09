@@ -27,6 +27,7 @@ import java.net.SocketTimeoutException
 import java.util.*
 import java.util.regex.Pattern
 import java.util.regex.PatternSyntaxException
+import kotlin.collections.ArrayList
 
 
 class MainActivity : AppCompatActivity(), OnConnectionListener, CommandLibrary.OnCommandResponseListener {
@@ -181,6 +182,17 @@ class MainActivity : AppCompatActivity(), OnConnectionListener, CommandLibrary.O
                 return true
         }
         return false
+    }
+
+    // function to check if a string contains any words from a list of words and return all matching words
+    private fun getMatching(text: String, wordList: List<String>): ArrayList<String> {
+        var lowertext = text.toLowerCase()
+        var matches = arrayListOf<String>()
+        for (word in wordList) {
+            if (lowertext.contains(word.toLowerCase()))
+                matches.add(word)
+        }
+        return matches
     }
 
     // function returns a random item from an array of strings
@@ -394,8 +406,10 @@ class MainActivity : AppCompatActivity(), OnConnectionListener, CommandLibrary.O
                         // if they spoke for a certain amount of time
                         if (Math.random() * 100 < verbalBCProbBar.progress/2 &&
                                 (pid == inactivePID || checkFor(obj!!["transcript"].toString(),
-                                                listOf("i think", "i feel like", "i'm pretty sure", "i wonder if", "let's", "we can", "i don't think")))
-                                        && obj!!["speech_duration"].toString().toDouble() > 2)
+                                        listOf("i think", "i feel like", "i'm pretty sure", "i wonder if", "let's", "we can", "i don't think"," Coffee pot "," Screwdriver "," sharpies ", " sharpie ", " rubber band ",
+                                                " rubber bands "," CD "," Camera "," Watch "," teddy bear "," underwear ","newspaper "," whiskey "," chocolate "," Whistle "," soda "," Shoelaces ",
+                                                " key "," Light bulb "," tape ", " Umbrella "," honey "," floss "," Garbage bag "," Condom "," Spoon "," Chapstick "," lip balm ", " coke ")))
+                                && obj!!["speech_duration"].toString().toDouble() > 1.5)
                             onListen("Manual_Long", obj!!["transcript"].toString())
                         else
                             onListen("Manual", obj!!["transcript"].toString())
@@ -868,10 +882,13 @@ class MainActivity : AppCompatActivity(), OnConnectionListener, CommandLibrary.O
             log("long response activated", -1)
             var restOfSentence = ""
             responses = arrayOf("that's worth considering", "good idea", "I see", "that makes sense",
-                    "that's reasonable", "uh huh", "<phoneme ph='h m'>Hmm</phoneme>",
-                    "<phoneme ph='h m'>Hmm</phoneme> maybe", "interesting", "okay", "yeah",
+                    "that's reasonable", "uh huh", "<pitch add=\"25\"><style set=\"enthusiastic\"><duration stretch=\"1.5\"><phoneme ph='h m'>Hmm?</phoneme></duration></style></pitch>",
+                    "<pitch add=\"25\"><style set=\"enthusiastic\"><duration stretch=\"1.5\"><phoneme ph='h m'>Hmm?</phoneme></duration></style></pitch> maybe", "interesting", "okay", "yeah",
                     "that's interesting", "what do we think about that?", "thoughts?",
                     "let's think about that")
+            var items = listOf(" Coffee pot "," Screwdriver "," sharpies ", " sharpie ", " rubber band ",
+                    " rubber bands "," CD "," Camera "," Watch "," teddy bear "," underwear ","newspaper "," whiskey "," chocolate "," Whistle "," soda "," Shoelaces ",
+                    " key "," Light bulb "," tape ", " Umbrella "," honey "," floss "," Garbage bag "," Condom "," Spoon "," Chapstick "," lip balm ", " coke ")
             if (checkFor(text, listOf("i think that")))
                 restOfSentence = text.substring(text.toLowerCase().indexOf("i think") + 12)
             else if (checkFor(text, listOf("i think")))
@@ -891,7 +908,7 @@ class MainActivity : AppCompatActivity(), OnConnectionListener, CommandLibrary.O
             }
             var substitutions = listOf(" ha ", " ", "hahaha", " ", "haha", " ",
                     "i've", "you've", " i have", " you have", "i'd", "you'd", "i'll", "you'll",
-                    "i'm", "you're", " i am", " you are", " i ", " you ")
+                    "i'm", "you're", " i am", " you are", " i ", " you ", " um ", " ", " uh ", " ", " feel like ", " feel as if "," like ", " ", " uhh " , " ")
             var subIndex = 0
             restOfSentence = restOfSentence.toLowerCase()
             while (subIndex < substitutions.size){
@@ -900,7 +917,14 @@ class MainActivity : AppCompatActivity(), OnConnectionListener, CommandLibrary.O
                 restOfSentence = restOfSentence.replace(replacedStr, replaceStr)
                 subIndex += 2
             }
-            say(restOfSentence + " " + getRandom(responses, 90))
+            var matches = getMatching(text, items)
+            if (matches.size>0) {
+                restOfSentence=""
+                for (word in matches)
+                    restOfSentence+= word + ", "
+            }
+            restOfSentence = restOfSentence + " <phoneme ph='LPAU'>Pause</phoneme></duration></style></pitch> " + getRandom(responses, 90)
+            say(restOfSentence)
         } else if (verbalBCSwitch.isChecked) {
             tempSleep = 3000
             var canCancel = true
