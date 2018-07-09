@@ -42,6 +42,7 @@ class MainActivity : AppCompatActivity(), OnConnectionListener, CommandLibrary.O
     private var lastSpeechTimes: Array<Long> = arrayOf(0, 0, 0, 0)
     private var lastSpeechPID: Int = 0
     private var lastJiboSpeech: Long = 0 // Make sure Jibo doesn't talk too much at once
+    private var participantNames = arrayOf("Nick", "Mike", "Ling")
     // Keeps track of how long each PID spoke for in the last X seconds (see Background task)
     private var speechTimes: Array<Double> = arrayOf(0.0, 0.0, 0.0, 0.0)
     // Keeps track of Jibo's orientation
@@ -842,6 +843,7 @@ class MainActivity : AppCompatActivity(), OnConnectionListener, CommandLibrary.O
     override fun onVideo(s: String, videoReadyEvent: EventMessage.VideoReadyEvent, inputStream: InputStream) {}
 
     override fun onListen(transactID: String, speech: String) {
+        var name = participantNames.get(lastSpeechPID-1)
         var proudList = listOf("happy", "cool", "fun", "great", "amazing", "wonderful",
                 "fantastic", "yes", "nice", "congrats", "congratulations", "yay", "best", "thanks",
                 "hurray", "woohoo", "woo hoo", "excited", "exciting", "not bad", "wasn't bad")
@@ -885,7 +887,7 @@ class MainActivity : AppCompatActivity(), OnConnectionListener, CommandLibrary.O
                     "that's reasonable", "uh huh", "<pitch add=\"25\"><style set=\"enthusiastic\"><duration stretch=\"1.5\"><phoneme ph='h m'>Hmm?</phoneme></duration></style></pitch>",
                     "<pitch add=\"25\"><style set=\"enthusiastic\"><duration stretch=\"1.5\"><phoneme ph='h m'>Hmm?</phoneme></duration></style></pitch> maybe", "interesting", "okay", "yeah",
                     "that's interesting", "what do we think about that?", "thoughts?",
-                    "let's think about that")
+                    "let's think about that", "that's interesting, $name", "I see, $name", "that makes sense, $name")
             var items = listOf(" Coffee pot "," Screwdriver "," sharpies ", " sharpie ", " rubber band ",
                     " rubber bands "," CD "," Camera "," Watch "," teddy bear "," underwear ","newspaper "," whiskey "," chocolate "," Whistle "," soda "," Shoelaces ",
                     " key "," Light bulb "," tape ", " Umbrella "," honey "," floss "," Garbage bag "," Condom "," Spoon "," Chapstick "," lip balm ", " coke ")
@@ -923,7 +925,7 @@ class MainActivity : AppCompatActivity(), OnConnectionListener, CommandLibrary.O
                 for (word in matches)
                     restOfSentence+= word + ", "
             }
-            restOfSentence = restOfSentence + " <phoneme ph='LPAU'>Pause</phoneme></duration></style></pitch> " + getRandom(responses, 90)
+            restOfSentence = restOfSentence + " "/*" <phoneme ph='LPAU'>Pause</phoneme></duration></style></pitch> "*/ + getRandom(responses, 90)
             say(restOfSentence)
         } else if (verbalBCSwitch.isChecked) {
             tempSleep = 3000
@@ -978,7 +980,10 @@ class MainActivity : AppCompatActivity(), OnConnectionListener, CommandLibrary.O
             }
             if (canCancel)
                 onCancelClick()
-            say(text)
+            if (Math.random()*101 < 35)
+                say(text + ", $name")
+            else
+                say(text)
             Thread.sleep(tempSleep.toLong())
         }
     }

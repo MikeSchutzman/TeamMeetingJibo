@@ -121,6 +121,7 @@
         app:layout_constraintStart_toEndOf="@+id/positionTextZ"
         app:layout_constraintTop_toBottomOf="@+id/cancelButton" />
 
+
     <EditText
         android:id="@+id/positionTextX"
         android:layout_width="50dp"
